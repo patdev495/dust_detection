@@ -1,0 +1,12 @@
+README
+setup.py
+src/base_project.egg-info/PKG-INFO
+src/base_project.egg-info/SOURCES.txt
+src/base_project.egg-info/dependency_links.txt
+src/base_project.egg-info/top_level.txt
+src/controllers/__init__.py
+src/controllers/main_window_controller.py
+src/modules/__init__.py
+src/modules/utils.py
+src/views/__init__.py
+src/views/main_window.py

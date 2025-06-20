@@ -1,0 +1,33 @@
+
+pyside6-uic src\views\main.ui -o src\views\main_window.py
+pyside6-rcc resources.qrc -o resources_rc.py
+
+rmdir /s /q build dist __pycache__
+
+python -m build
+twine upload dist/*
+
+uvicorn server:app --reload
+
+pyinstaller --onefile app.py
+pyinstaller --collect-submodules openvino --collect-binaries openvino --collect-data openvino --onedir  app.py 
+pyinstaller app.spec
+pyi-makespec dust_detection.src.controllers.main_window_controller
+
+auto-py-to-exe
+pyi-makespec app.py --name dustdetection --onefile
+
+pip install -e .
+
+from setuptools import setup, find_packages
+
+setup(
+    name='dust_detection',
+    version='0.1',
+    packages=find_packages(where='src'),
+    package_dir={'': 'src'},
+)
+
+pip install --force-reinstall auto-py-to-exe
+
+pyinstaller --noconfirm app.py
