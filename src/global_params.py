@@ -50,7 +50,7 @@ class Camera_Config_Params(BaseParams):
         self.saturation = 60
         self.sharpness = 65
         # self.auto_focus = 0
-
+        self.zoom_in_factor = 1.25
         self.create_or_load_yaml()
         
 class Product_Config_Params(BaseParams):

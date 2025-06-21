@@ -16,12 +16,12 @@ from PySide6.QtGui import (QAction, QBrush, QColor, QConicalGradient,
     QIcon, QImage, QKeySequence, QLinearGradient,
     QPainter, QPalette, QPixmap, QRadialGradient,
     QTransform)
-from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGraphicsView,
-    QGridLayout, QGroupBox, QHBoxLayout, QLabel,
-    QLayout, QLineEdit, QMainWindow, QMenu,
-    QMenuBar, QPushButton, QRadioButton, QSizePolicy,
-    QStatusBar, QTabWidget, QVBoxLayout, QWidget)
-from src.views.custom_component import VideoGraphicsView
+from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGridLayout,
+    QGroupBox, QHBoxLayout, QLabel, QLayout,
+    QLineEdit, QMainWindow, QMenu, QMenuBar,
+    QPushButton, QRadioButton, QSizePolicy, QStatusBar,
+    QTabWidget, QVBoxLayout, QWidget)
+
 
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
@@ -279,7 +279,6 @@ class Ui_MainWindow(object):
         self.ui_process_btn.setGeometry(QRect(10, 130, 131, 41))
         font5 = QFont()
         self.ui_process_btn.setFont(font5)
-        self.ui_process_btn.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
         self.ui_process_btn.setStyleSheet(u"")
         self.ui_auto_process_check_box = QCheckBox(self.groupBox_10)
         self.ui_auto_process_check_box.setObjectName(u"ui_auto_process_check_box")
@@ -346,8 +345,15 @@ class Ui_MainWindow(object):
         self.groupBox_9.setStyleSheet(u"background-color:white;")
         self.horizontalLayout_3 = QHBoxLayout(self.groupBox_9)
         self.horizontalLayout_3.setObjectName(u"horizontalLayout_3")
-        self.ui_label_display_video = VideoGraphicsView(self.groupBox_9)
+        self.ui_label_display_video = QLabel(self.groupBox_9)
         self.ui_label_display_video.setObjectName(u"ui_label_display_video")
+        sizePolicy1 = QSizePolicy(QSizePolicy.Policy.Ignored, QSizePolicy.Policy.Ignored)
+        sizePolicy1.setHorizontalStretch(0)
+        sizePolicy1.setVerticalStretch(0)
+        sizePolicy1.setHeightForWidth(self.ui_label_display_video.sizePolicy().hasHeightForWidth())
+        self.ui_label_display_video.setSizePolicy(sizePolicy1)
+        self.ui_label_display_video.setCursor(QCursor(Qt.CursorShape.PointingHandCursor))
+        self.ui_label_display_video.setStyleSheet(u"border: 1px solid black")
 
         self.horizontalLayout_3.addWidget(self.ui_label_display_video)
 
@@ -454,6 +460,7 @@ class Ui_MainWindow(object):
         self.ui_sum_ok_label.setText(QCoreApplication.translate("MainWindow", u"N OK:", None))
         self.ui_sum_ng_label.setText(QCoreApplication.translate("MainWindow", u"N NG:", None))
         self.groupBox_9.setTitle(QCoreApplication.translate("MainWindow", u"Camera", None))
+        self.ui_label_display_video.setText("")
         self.groupBox_8.setTitle(QCoreApplication.translate("MainWindow", u"Message", None))
         self.groupBox_11.setTitle(QCoreApplication.translate("MainWindow", u"System", None))
         self.groupBox_12.setTitle(QCoreApplication.translate("MainWindow", u"SFIS", None))

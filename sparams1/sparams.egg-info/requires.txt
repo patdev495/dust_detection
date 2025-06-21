@@ -1,4 +1,0 @@
-watchdog
-pyyaml
-opencv-python
-numpy

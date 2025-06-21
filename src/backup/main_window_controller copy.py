@@ -29,7 +29,6 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QLabel,
     QMainWindow,
-    QMessageBox
 )
 
 from src.global_params import (
@@ -264,7 +263,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             self.ui_process_btn.setDisabled(True)
         else:
             self.ui_process_btn.setEnabled(True)
-            # self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
+            self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
         self.ui_stop_camera_btn.setDisabled(True)
         self.ui_mac_input.setEnabled(False)
         
@@ -282,20 +281,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.cycle_time_list = []
     
     def mock_funtions_base(self):
-        def process_one_image():
-            try:
-                if self.stream_video_worker is not None:
-                    if self.stream_video_worker.abnormal_processing is not None:
-                        result = self.stream_video_worker.abnormal_processing.dust_detect_on_image(self.image_need_process)
-                        if result is not None:
-                            if not self.ui_heat_map_radio_btn.isChecked():
-                                self.ui_label_display_video.setImage(result[1])
-                            else:
-                                self.ui_label_display_video.setImage(result[0])
-                            print("ok")
-            except Exception as e:
-                QMessageBox.information(None, "Error",f"{e}")
-                    
+
         #change debug console_logger level
         def on_debug_state_changed(state):
             self.is_debug = self.ui_debug_check_box.isChecked()
@@ -317,18 +303,15 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                 self.ui_process_btn.setDisabled(False)
                 self.image_need_process = file_path
                 self.update_process_type_mode()
-                # self.set_background_label(self.ui_label_display_video, file_path)
-                self.ui_label_display_video.setImage(file_path)
+                self.set_background_label(self.ui_label_display_video, file_path)
 
             if self.image_need_process != "":
                 self.ui_process_btn.setEnabled(True)
-                # self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
+                self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
             else:
                 self.ui_process_btn.setEnabled(True)
         self.ui_open_image_btn.clicked.connect(click_open_image)
-        self.ui_process_btn.clicked.connect(process_one_image)
-
-
+        
         #save all config button
         self.ui_save_all_config_btn.triggered.connect(lambda: save_all_config())
         
@@ -397,8 +380,12 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         )
         QTimer.singleShot(
             0,
-            lambda: self.ui_label_display_video.setImage(
-                get_resource_path("src/assets/IVIS.png")  
+            lambda: self.ui_label_display_video.setPixmap(
+                QPixmap(get_resource_path("src/assets/IVIS.png")).scaled(
+                    self.ui_label_display_video.size(),
+                    Qt.AspectRatioMode.KeepAspectRatio,
+                    Qt.TransformationMode.SmoothTransformation,
+                )
             ),
         )
 
@@ -436,10 +423,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             "background-color: white;font-weight:bold"
         )
 
-        # self.set_background_label(
-        #     self.ui_label_display_video, get_resource_path(r"src\assets\IVIS.png")
-        # )
-        self.ui_label_display_video.setImage(get_resource_path(r"src\assets\IVIS.png"))
+        self.set_background_label(
+            self.ui_label_display_video, get_resource_path(r"src\assets\IVIS.png")
+        )
         self.ui_status_label.setStyleSheet(
             system_config_params.normal_status_label_style
         )
@@ -572,7 +558,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
     def start_stream(self):
         # check if is exist stream camera thread
-        self.image_need_process = ""
         self.ui_start_camera_btn.setDisabled(True)
         operation_history_log.info("Start camera!\n")
         console_logger.info("Start camera!")
@@ -592,11 +577,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.is_running_stream = False
         self.input_mac_value = ""
         self.input_tray_value = ""
-        # self.set_background_label(self.ui_label_display_video,get_resource_path(r'src\assets\IVIS.png'))
-        self.ui_label_display_video.setImage(get_resource_path(r'src\assets\IVIS.png'))
+        self.set_background_label(self.ui_label_display_video,get_resource_path(r'src\assets\IVIS.png'))
         self.ui_start_camera_btn.setDisabled(False)
         self.ui_mac_input.setDisabled(True)
-        self.ui_open_image_btn.setDisabled(False)
         # self.stop_current_thread()
 
     def set_background_label(self, label: QLabel, cv_image):
@@ -675,8 +658,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                     self.ui_status_label.setStyleSheet(
                     system_config_params.ng_status_label_style
                     )
-                    # self.set_background_label(self.ui_label_display_video, display_image)
-                    self.ui_label_display_video.setImage(display_image)
+                    self.set_background_label(self.ui_label_display_video, display_image)
                     return
             if not is_abnormal:
                 self.ok_frame_count += 1
@@ -716,8 +698,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                     system_config_params.ng_status_label_style
                 )
                 self.ui_status_label.setText(system_config_params.ng_status_label_text)
-        # self.set_background_label(self.ui_label_display_video, display_image)
-        self.ui_label_display_video.setImage(display_image)
+        self.set_background_label(self.ui_label_display_video, display_image)
 
     def set_system_message(self, text, color="red"):
         self.ui_system_message_label.setText(text)

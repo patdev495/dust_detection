@@ -2,8 +2,8 @@ Detect_LCD:
   C: 2
   block_size: 11
   kernel_blur_size:
-  - 5
-  - 5
+  - 3
+  - 3
   kernel_size: 7
   expand_crop_bot: 0
   expand_crop_left: 0
@@ -11,31 +11,31 @@ Detect_LCD:
   expand_crop_top: -3
   min_LCD_area_ratio: 0.3
   max_LCD_area_ratio: 0.8
-  max_LCD_w_h_ratio: 0.8
+  max_LCD_w_h_ratio: 0.9
   is_need_check_stable_frames: true
   motion_score_threshold: 3
   required_stable_frames: 3
   resize_shape_caculate_stablity:
   - 80
   - 60
-  is_need_scan_sn_first: true
+  is_need_scan_sn_first: false
 Abnormal_Train:
-  abnormal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\FAI_crop\NG
+  abnormal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\My_crop_20.06\NG
   accelerator: gpu
   dataset_name: check_bui
   image_size: 512
   model_type: Padim
-  normal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\FAI_crop\OK
-  normal_split_ratio: 0.1
+  normal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\My_crop_20.06\OK
+  normal_split_ratio: 0.15
   post_processing_image_sensitivity: 1
   post_processing_pixel_sensitivity: 1
-  test_split_ratio: 0.1
-  train_batch_size: 2
+  test_split_ratio: 0.15
+  train_batch_size: 1
 Abnormal_Inference:
   model_path: models\openvino_512_20.05_My_Crop\model.xml
   inference_type: Openvino
-  heat_map_NG_thresh_hold: 0.14
-  heat_map_display_alpha: 0.5
+  heat_map_NG_thresh_hold: 0.03
+  heat_map_display_alpha: 0.9
   max_ratio_w_h_cnt: 3
   brightness_threshold_caculate_dust_size: 0.9
   ng_color:
@@ -54,7 +54,7 @@ Abnormal_Inference:
   src_video: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
   is_need_show_abnormal_score: true
 Camera_Config:
-  camera_source: video\rotate_am11.mp4
+  camera_source: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\6.mp4
   camera_resolution:
   - 1080
   - 1920
@@ -65,11 +65,12 @@ Camera_Config:
   contrast: 45
   saturation: 60
   sharpness: 65
-  is_need_rotate_camera: true
+  is_need_rotate_camera: false
   rotate_angle: 180
   sensor_size:
   - 6.4
   - 4.8
+  zoom_in_factor: 1.3
 System_Config:
   log_dir: logs
   debug: false

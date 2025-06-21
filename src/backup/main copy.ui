@@ -717,9 +717,6 @@ padding: 5px</string>
              <property name="font">
               <font/>
              </property>
-             <property name="cursor">
-              <cursorShape>PointingHandCursor</cursorShape>
-             </property>
              <property name="styleSheet">
               <string notr="true"/>
              </property>
@@ -885,7 +882,23 @@ font-weight:bold
             </property>
             <layout class="QHBoxLayout" name="horizontalLayout_3">
              <item>
-              <widget class="QGraphicsView" name="ui_label_display_video"/>
+              <widget class="QLabel" name="ui_label_display_video">
+               <property name="sizePolicy">
+                <sizepolicy hsizetype="Ignored" vsizetype="Ignored">
+                 <horstretch>0</horstretch>
+                 <verstretch>0</verstretch>
+                </sizepolicy>
+               </property>
+               <property name="cursor">
+                <cursorShape>PointingHandCursor</cursorShape>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">border: 1px solid black</string>
+               </property>
+               <property name="text">
+                <string/>
+               </property>
+              </widget>
              </item>
             </layout>
            </widget>
