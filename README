@@ -31,3 +31,6 @@ setup(
 pip install --force-reinstall auto-py-to-exe
 
 pyinstaller --noconfirm app.py
+
+git rm -r --cached src\base_project.egg-info
+pyside6-designer

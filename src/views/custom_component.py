@@ -8,14 +8,18 @@ class VideoGraphicsView(QGraphicsView):
     def __init__(self,parent=None):
         super().__init__(parent)
 
+        #add scene 
         self._scene = QGraphicsScene(self)
         self.setScene(self._scene)
 
+        #add pixmap to scene
         self.pixmap_item = QGraphicsPixmapItem()
         self._scene.addItem(self.pixmap_item)
 
+        #turn on Antialiasing
         self.setRenderHint(QPainter.RenderHint.Antialiasing)
 
+        
         self._zoom = 0
         self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)  # Cho phép kéo ảnh
 

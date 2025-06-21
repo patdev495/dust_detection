@@ -22,7 +22,6 @@ from PySide6.QtWidgets import (QApplication, QCheckBox, QFrame, QGraphicsView,
     QMenuBar, QPushButton, QRadioButton, QSizePolicy,
     QStatusBar, QTabWidget, QVBoxLayout, QWidget)
 from src.views.custom_component import VideoGraphicsView
-
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         if not MainWindow.objectName():
@@ -69,11 +68,11 @@ class Ui_MainWindow(object):
         self.groupBox_5.setFont(font)
         self.verticalLayoutWidget = QWidget(self.groupBox_5)
         self.verticalLayoutWidget.setObjectName(u"verticalLayoutWidget")
-        self.verticalLayoutWidget.setGeometry(QRect(10, 20, 341, 66))
+        self.verticalLayoutWidget.setGeometry(QRect(10, 20, 341, 70))
         self.verticalLayout = QVBoxLayout(self.verticalLayoutWidget)
         self.verticalLayout.setSpacing(2)
         self.verticalLayout.setObjectName(u"verticalLayout")
-        self.verticalLayout.setSizeConstraint(QLayout.SetDefaultConstraint)
+        self.verticalLayout.setSizeConstraint(QLayout.SizeConstraint.SetDefaultConstraint)
         self.verticalLayout.setContentsMargins(6, 2, 6, 2)
         self.horizontalLayout_5 = QHBoxLayout()
         self.horizontalLayout_5.setObjectName(u"horizontalLayout_5")
@@ -96,7 +95,7 @@ class Ui_MainWindow(object):
 "    color: red;                /* Ch\u1eef tr\u1eafng */        /* Ch\u1eef \u0111\u1eadm */\n"
 "    border: 1px solid #9370DB;  /* Vi\u1ec1n t\u00edm s\u00e1ng (Medium Purple) */\n"
 "    border-radius: 3px;")
-        self.ui_mac_input.setAlignment(Qt.AlignCenter)
+        self.ui_mac_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui_mac_input.setDragEnabled(True)
         self.ui_mac_input.setClearButtonEnabled(False)
 
@@ -123,7 +122,7 @@ class Ui_MainWindow(object):
         self.ui_last_mac_input.setFont(font2)
         self.ui_last_mac_input.setStyleSheet(u"background-color: #FFFFF0;\n"
 "border: 1px solid #ccc")
-        self.ui_last_mac_input.setAlignment(Qt.AlignCenter)
+        self.ui_last_mac_input.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui_last_mac_input.setClearButtonEnabled(False)
 
         self.horizontalLayout_4.addWidget(self.ui_last_mac_input)
@@ -167,17 +166,17 @@ class Ui_MainWindow(object):
         self.groupBox_7.setMinimumSize(QSize(110, 80))
         self.groupBox_7.setMaximumSize(QSize(110, 100))
         self.groupBox_7.setFont(font)
-        self.groupBox_7.setLayoutDirection(Qt.LeftToRight)
+        self.groupBox_7.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_proces_type_camera_label = QLabel(self.groupBox_7)
         self.ui_proces_type_camera_label.setObjectName(u"ui_proces_type_camera_label")
         self.ui_proces_type_camera_label.setGeometry(QRect(10, 20, 91, 21))
         self.ui_proces_type_camera_label.setStyleSheet(u"")
-        self.ui_proces_type_camera_label.setAlignment(Qt.AlignCenter)
+        self.ui_proces_type_camera_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui_process_type_image_label = QLabel(self.groupBox_7)
         self.ui_process_type_image_label.setObjectName(u"ui_process_type_image_label")
         self.ui_process_type_image_label.setGeometry(QRect(10, 50, 91, 21))
         self.ui_process_type_image_label.setStyleSheet(u"")
-        self.ui_process_type_image_label.setAlignment(Qt.AlignCenter)
+        self.ui_process_type_image_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_2.addWidget(self.groupBox_7)
 
@@ -186,7 +185,7 @@ class Ui_MainWindow(object):
         self.groupBox_2.setMinimumSize(QSize(110, 80))
         self.groupBox_2.setMaximumSize(QSize(110, 100))
         self.groupBox_2.setFont(font)
-        self.groupBox_2.setLayoutDirection(Qt.LeftToRight)
+        self.groupBox_2.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_open_config_file_btn = QPushButton(self.groupBox_2)
         self.ui_open_config_file_btn.setObjectName(u"ui_open_config_file_btn")
         self.ui_open_config_file_btn.setGeometry(QRect(10, 20, 91, 21))
@@ -207,7 +206,7 @@ class Ui_MainWindow(object):
         self.groupBox_6.setMinimumSize(QSize(110, 80))
         self.groupBox_6.setMaximumSize(QSize(110, 100))
         self.groupBox_6.setFont(font)
-        self.groupBox_6.setLayoutDirection(Qt.LeftToRight)
+        self.groupBox_6.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_open_image_btn = QPushButton(self.groupBox_6)
         self.ui_open_image_btn.setObjectName(u"ui_open_image_btn")
         self.ui_open_image_btn.setGeometry(QRect(10, 30, 91, 31))
@@ -222,7 +221,7 @@ class Ui_MainWindow(object):
         self.groupBox.setMinimumSize(QSize(110, 80))
         self.groupBox.setMaximumSize(QSize(110, 100))
         self.groupBox.setFont(font)
-        self.groupBox.setLayoutDirection(Qt.LeftToRight)
+        self.groupBox.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_heat_map_radio_btn = QRadioButton(self.groupBox)
         self.ui_heat_map_radio_btn.setObjectName(u"ui_heat_map_radio_btn")
         self.ui_heat_map_radio_btn.setGeometry(QRect(20, 20, 82, 17))
@@ -238,7 +237,7 @@ class Ui_MainWindow(object):
         self.groupBox_3.setMinimumSize(QSize(110, 80))
         self.groupBox_3.setMaximumSize(QSize(110, 100))
         self.groupBox_3.setFont(font)
-        self.groupBox_3.setLayoutDirection(Qt.LeftToRight)
+        self.groupBox_3.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_model_name_label = QLabel(self.groupBox_3)
         self.ui_model_name_label.setObjectName(u"ui_model_name_label")
         self.ui_model_name_label.setGeometry(QRect(10, 20, 91, 51))
@@ -247,7 +246,7 @@ class Ui_MainWindow(object):
         self.ui_model_name_label.setFont(font4)
         self.ui_model_name_label.setStyleSheet(u"background: #D6EAF8;\n"
 "padding: 5px")
-        self.ui_model_name_label.setAlignment(Qt.AlignCenter)
+        self.ui_model_name_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.horizontalLayout_2.addWidget(self.groupBox_3)
 
@@ -257,7 +256,7 @@ class Ui_MainWindow(object):
         self.horizontalLayout = QHBoxLayout()
         self.horizontalLayout.setSpacing(2)
         self.horizontalLayout.setObjectName(u"horizontalLayout")
-        self.horizontalLayout.setSizeConstraint(QLayout.SetNoConstraint)
+        self.horizontalLayout.setSizeConstraint(QLayout.SizeConstraint.SetNoConstraint)
         self.groupBox_10 = QGroupBox(self.tab_1)
         self.groupBox_10.setObjectName(u"groupBox_10")
         self.groupBox_10.setMinimumSize(QSize(150, 0))
@@ -265,13 +264,13 @@ class Ui_MainWindow(object):
         self.groupBox_10.setStyleSheet(u"padding: 0 5px;\n"
 "\n"
 "")
-        self.groupBox_10.setAlignment(Qt.AlignLeading|Qt.AlignLeft|Qt.AlignVCenter)
+        self.groupBox_10.setAlignment(Qt.AlignmentFlag.AlignLeading|Qt.AlignmentFlag.AlignLeft|Qt.AlignmentFlag.AlignVCenter)
         self.groupBox_10.setFlat(False)
         self.groupBox_10.setCheckable(False)
         self.ui_logo_info_label = QLabel(self.groupBox_10)
         self.ui_logo_info_label.setObjectName(u"ui_logo_info_label")
         self.ui_logo_info_label.setGeometry(QRect(0, 20, 151, 81))
-        self.ui_logo_info_label.setPixmap(QPixmap(u"../assets/IVIS.png"))
+        self.ui_logo_info_label.setPixmap(QPixmap(u"C:/Users/AKTF/.designer/assets/IVIS.png"))
         self.ui_logo_info_label.setScaledContents(True)
         self.ui_process_btn = QPushButton(self.groupBox_10)
         self.ui_process_btn.setObjectName(u"ui_process_btn")
@@ -300,12 +299,12 @@ class Ui_MainWindow(object):
         font7 = QFont()
         font7.setPointSize(18)
         self.ui_status_label.setFont(font7)
-        self.ui_status_label.setLayoutDirection(Qt.LeftToRight)
+        self.ui_status_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_status_label.setStyleSheet(u"border: 1px solid #ccc;\n"
 "border-radius: 3px;\n"
 "\n"
 "")
-        self.ui_status_label.setAlignment(Qt.AlignCenter)
+        self.ui_status_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui_sum_ok_label = QLabel(self.groupBox_10)
         self.ui_sum_ok_label.setObjectName(u"ui_sum_ok_label")
         self.ui_sum_ok_label.setGeometry(QRect(10, 360, 131, 51))
@@ -313,25 +312,25 @@ class Ui_MainWindow(object):
         font8.setPointSize(11)
         font8.setBold(True)
         self.ui_sum_ok_label.setFont(font8)
-        self.ui_sum_ok_label.setLayoutDirection(Qt.LeftToRight)
+        self.ui_sum_ok_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_sum_ok_label.setStyleSheet(u"background-color:#ccc;\n"
 "border-radius: 3px;\n"
 "color:blue;\n"
 "font-weight:bold\n"
 "\n"
 "")
-        self.ui_sum_ok_label.setAlignment(Qt.AlignCenter)
+        self.ui_sum_ok_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.ui_sum_ng_label = QLabel(self.groupBox_10)
         self.ui_sum_ng_label.setObjectName(u"ui_sum_ng_label")
         self.ui_sum_ng_label.setGeometry(QRect(10, 430, 131, 51))
         self.ui_sum_ng_label.setFont(font8)
-        self.ui_sum_ng_label.setLayoutDirection(Qt.LeftToRight)
+        self.ui_sum_ng_label.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self.ui_sum_ng_label.setStyleSheet(u"background-color:#ccc;\n"
 "border-radius: 3px;\n"
 "color:red;\n"
 "font-weight:bold\n"
 "")
-        self.ui_sum_ng_label.setAlignment(Qt.AlignCenter)
+        self.ui_sum_ng_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.line = QFrame(self.groupBox_10)
         self.line.setObjectName(u"line")
         self.line.setEnabled(False)
@@ -386,7 +385,7 @@ class Ui_MainWindow(object):
         font9.setBold(True)
         self.ui_system_message_label.setFont(font9)
         self.ui_system_message_label.setStyleSheet(u"border: 1px dot #ccc")
-        self.ui_system_message_label.setAlignment(Qt.AlignCenter)
+        self.ui_system_message_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
 
         self.verticalLayout_2.addWidget(self.ui_system_message_label)
 
@@ -402,7 +401,7 @@ class Ui_MainWindow(object):
         MainWindow.setCentralWidget(self.centralwidget)
         self.menubar = QMenuBar(MainWindow)
         self.menubar.setObjectName(u"menubar")
-        self.menubar.setGeometry(QRect(0, 0, 1103, 21))
+        self.menubar.setGeometry(QRect(0, 0, 1103, 33))
         self.menuParameters = QMenu(self.menubar)
         self.menuParameters.setObjectName(u"menuParameters")
         MainWindow.setMenuBar(self.menubar)
