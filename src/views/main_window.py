@@ -270,7 +270,7 @@ class Ui_MainWindow(object):
         self.ui_logo_info_label = QLabel(self.groupBox_10)
         self.ui_logo_info_label.setObjectName(u"ui_logo_info_label")
         self.ui_logo_info_label.setGeometry(QRect(0, 20, 151, 81))
-        self.ui_logo_info_label.setPixmap(QPixmap(u"C:/Users/AKTF/.designer/assets/IVIS.png"))
+        self.ui_logo_info_label.setPixmap(QPixmap(r"src\assets\IVIS.png"))
         self.ui_logo_info_label.setScaledContents(True)
         self.ui_process_btn = QPushButton(self.groupBox_10)
         self.ui_process_btn.setObjectName(u"ui_process_btn")

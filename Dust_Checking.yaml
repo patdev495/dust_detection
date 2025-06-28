@@ -1,41 +1,41 @@
 Detect_LCD:
-  C: 2
+  C: 4
   block_size: 11
   kernel_blur_size:
-  - 3
-  - 3
+  - 5
+  - 5
   kernel_size: 7
   expand_crop_bot: 0
   expand_crop_left: 0
   expand_crop_right: 0
-  expand_crop_top: -3
-  min_LCD_area_ratio: 0.3
-  max_LCD_area_ratio: 0.8
+  expand_crop_top: 3
+  min_LCD_area_ratio: 0.35
+  max_LCD_area_ratio: 0.85
   max_LCD_w_h_ratio: 0.9
   is_need_check_stable_frames: true
+  is_need_scan_sn_first: false
   motion_score_threshold: 3
-  required_stable_frames: 3
+  required_stable_frames: 4
   resize_shape_caculate_stablity:
   - 80
   - 60
-  is_need_scan_sn_first: true
 Abnormal_Train:
-  abnormal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\My_crop_20.06\NG
+  abnormal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\FAI_crop\NG
   accelerator: gpu
   dataset_name: check_bui
   image_size: 512
   model_type: Padim
-  normal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\My_crop_20.06\OK
-  normal_split_ratio: 0.15
+  normal_dir: D:\Tu\Old\AI\data\Data_check_bui\DATA_19.05\Train\FAI_crop\OK
+  normal_split_ratio: 0.1
   post_processing_image_sensitivity: 1
   post_processing_pixel_sensitivity: 1
-  test_split_ratio: 0.15
-  train_batch_size: 1
+  test_split_ratio: 0.1
+  train_batch_size: 2
 Abnormal_Inference:
   model_path: models\openvino_512_20.05_My_Crop\model.xml
   inference_type: Openvino
-  heat_map_NG_thresh_hold: 0.135
-  heat_map_display_alpha: 0.9
+  heat_map_NG_thresh_hold: 0.14
+  heat_map_display_alpha: 0.5
   max_ratio_w_h_cnt: 3
   brightness_threshold_caculate_dust_size: 0.9
   ng_color:
@@ -51,26 +51,32 @@ Abnormal_Inference:
   - 0
   - 0
   frame_count_threashold_ok: 10
-  src_video: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
   is_need_show_abnormal_score: true
+  src_video: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
 Camera_Config:
-  camera_source: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1.mp4
+  camera_source: 0
   camera_resolution:
-  - 1080
-  - 1920
+  - 2160
+  - 3840
   auto_exposure: 0.25
-  prop_exposure: -6
+  prop_exposure: -5
+  sensor_size:
+  - 6.4
+  - 4.8
+  is_need_rotate_camera: false
+  rotate_angle: 180
   manual_setting: true
   brightness: 65
   contrast: 45
   saturation: 60
   sharpness: 65
-  is_need_rotate_camera: false
-  rotate_angle: 180
-  sensor_size:
-  - 6.4
-  - 4.8
-  zoom_in_factor: 1.3
+  zoom_in_factor: 1.05
+  cap_type_dshow: true
+  is_need_resize_frame: true
+  resize_resolution:
+  - 1620
+  - 2880
+  enable_mjpg_format: true
 System_Config:
   log_dir: logs
   debug: false
@@ -85,7 +91,7 @@ System_Config:
   ng_status_label_style: 'border: 1px solid #ccc; border-radius: 3px; background-color:
     red; font-weight: bold;color:white'
   ng_status_label_text: NG
-  time_to_focus_mac_input: 1000
+  time_to_focus_mac_input: 500
   show_image_focus_score: true
   skip_frames_show_focus: 8
 Product_Config:
@@ -93,16 +99,17 @@ Product_Config:
   mac_min_len: 16
   mac_start_with: PT5
   tray_min_len: 16
-  sum_ok_products: 34
+  sum_ok_products: 0
   sum_ng_products: 0
 SFC_Config:
   instruction:
   - http://10.72.76.65:8088/api/smo/HandleData
-  end_point: http://127.0.0.1:8000/api/echo
+  - http://127.0.0.1:8000/api/echo
+  end_point: http://10.72.76.65:8088/api/smo/HandleData
   method: POST
   headers:
     Content-Type: application/json
-  LINE_NAME: B81L4C1
+  LINE_NAME: B084FSF
   GROUP_NAME: VI
   SP: 811,811
   SN: PT53SH0452060KV6
@@ -133,3 +140,6 @@ SFC_Config:
   thickness_text_log_image: 2
   default_dir_log_image: ./saved_images
   default_dir_log_sn_pass: logs\pass_sn
+  test_params:
+    name: PAT
+    age: 18

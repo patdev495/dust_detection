@@ -137,9 +137,9 @@ class AnomalyDetection:
         )
 
         rotated_box = cv2.transform(np.array([box]), rotation_matrix)[0]
-        min_x = max(0, int(np.min(rotated_box[:, 0])))
-        max_x = min(w_image, int(np.max(rotated_box[:, 0])))
-        min_y = max(0, int(np.min(rotated_box[:, 1])) - detect_lcd_params.expand_crop_top)
+        min_x = max(0, int(np.min(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_left
+        max_x = min(w_image, int(np.max(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_right
+        min_y = max(0, int(np.min(rotated_box[:, 1])) + detect_lcd_params.expand_crop_top)
         max_y = min(h_image, int(np.max(rotated_box[:, 1])) + detect_lcd_params.expand_crop_bot)
         # min_y = max(0, int(np.min(rotated_box[:, 1])))
         # max_y = min(h_image, int(np.max(rotated_box[:, 1])))

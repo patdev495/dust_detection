@@ -1,1 +1,1 @@
-pyinstaller --noconfirm app.spec
+pyinstaller --noconfirm app.py

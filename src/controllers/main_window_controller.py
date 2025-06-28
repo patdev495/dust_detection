@@ -4,9 +4,9 @@ import time
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
 import numpy as np
+import os
 from src.modules.AnomalyDetection import AnomalyDetection
 from src.modules.utils import quick_stability_check,calculate_focus_score,get_resource_path, open_file, draw_focus_score
-import os
 from PySide6.QtWidgets import QFileDialog
 import cv2
 import requests
@@ -26,7 +26,6 @@ from PySide6.QtGui import (
 )
 from PySide6.QtWidgets import (
     QApplication,
-    QFileDialog,
     QLabel,
     QMainWindow,
     QMessageBox
@@ -60,10 +59,9 @@ class StreamVideoWorker(QObject):
         self.cap = None
         self.is_running = False
         self.abnormal_processing = None
-        #camera 
-
-        self.activate_capture = []
         
+        self.init_video_capture()
+        #camera         
         
         try:
             self.abnormal_processing = AnomalyDetection()
@@ -73,7 +71,6 @@ class StreamVideoWorker(QObject):
         if self.abnormal_processing is None:
             console_logger.error("Abnormal processing is None")
     
-
     def rotate_image(self,image, angle):
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)  # Tâm xoay là trung tâm ảnh
@@ -95,8 +92,16 @@ class StreamVideoWorker(QObject):
             console_logger.info("Release cap successfully")
         try:
             self.source = camera_config_params.camera_source
-            self.cap = cv2.VideoCapture(self.source)
-            self.activate_capture.append(self.cap)
+            if camera_config_params.cap_type_dshow:
+                self.cap = cv2.VideoCapture(self.source,cv2.CAP_DSHOW)
+                if camera_config_params.enable_mjpg_format:
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+            else:
+                self.cap = cv2.VideoCapture(self.source)
+                if camera_config_params.enable_mjpg_format:
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                
+            # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
             if self.cap is None or not self.cap.isOpened():
                 console_logger.error("Cannot opened video capture!")
                 return
@@ -124,9 +129,7 @@ class StreamVideoWorker(QObject):
     def start_stream_video(self):
         self.count_fr = 0
         self.is_running = True
-
-        self.init_video_capture()
-        
+        # self.init_video_capture()
         while self.is_running and self.cap is not None and self.cap.isOpened():
             start = time.time()
             if self.source != camera_config_params.camera_source:
@@ -147,6 +150,14 @@ class StreamVideoWorker(QObject):
                         camera_config_params.camera_resolution[0],
                     ),
                 )
+            if camera_config_params.is_need_resize_frame:
+                frame = cv2.resize(
+                        frame,
+                        (
+                            camera_config_params.resize_resolution[1],
+                            camera_config_params.resize_resolution[0],
+                        ),
+                    )
             end = time.time()
             fps = 1 / (end - start + 1e-5)
             self.count_fr += 1
@@ -155,7 +166,6 @@ class StreamVideoWorker(QObject):
                 console_logger.debug("is running stream: false")
                 continue 
             if not self._parent.is_auto_process:
-                #show focus image
                 if system_config_params.show_image_focus_score:
                     now = datetime.now().second
                     if now % system_config_params.skip_frames_show_focus == 0:
@@ -347,7 +357,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
         #open config button
         self.ui_open_config_file_btn.clicked.connect(
-            lambda: open_file(get_resource_path(system_config_params.config_file_path))
+            lambda: open_file(system_config_params.config_file_path)
         )
 
         #set focus to mac input
@@ -395,6 +405,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.set_background_label(
             self.ui_logo_info_label, get_resource_path(r"src\assets\IVIS.png")
         )
+        
         QTimer.singleShot(
             0,
             lambda: self.ui_label_display_video.setImage(

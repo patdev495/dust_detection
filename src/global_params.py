@@ -36,7 +36,11 @@ class Camera_Config_Params(BaseParams):
     def __init__(self,app_name,module_name):
         super().__init__(app_name, module_name)
         self.camera_source = 0
-        self.camera_resolution = [1620,2880]
+        self.camera_resolution = [2160,3840]
+        self.enable_mjpg_format = False
+        
+        self.is_need_resize_frame = True
+        self.resize_resolution = [1620,2880]
         self.auto_exposure = 0.25 #=.75
         self.prop_exposure = -5
         self.sensor_size = [6.4 , 4.8]
@@ -49,8 +53,9 @@ class Camera_Config_Params(BaseParams):
         self.contrast = 45
         self.saturation = 60
         self.sharpness = 65
+        self.cap_type_dshow = False
         # self.auto_focus = 0
-        self.zoom_in_factor = 1.25
+        self.zoom_in_factor = 1.05
         self.create_or_load_yaml()
         
 class Product_Config_Params(BaseParams):
@@ -80,7 +85,7 @@ class Detect_LCD_Params(BaseParams):
         self.expand_crop_bot = 0
         self.expand_crop_left = 0
         self.expand_crop_right = 0
-        self.expand_crop_top = -3
+        self.expand_crop_top = 3
         
         
         self.min_LCD_area_ratio = 0.4
@@ -125,7 +130,7 @@ class Abnormal_Inference_Params(BaseParams):
         self.ng_color = [0,0,255]
         self.ok_color = [0,255,0]
         self.dust_color = [255,0,0]
-        self.frame_count_threashold_ok = 10
+        self.frame_count_threashold_ok = 6
         self.is_need_show_abnormal_score = True
 
         self.src_video = r"D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4"
@@ -136,23 +141,23 @@ class Request_SFC_Params(BaseParams):
         super().__init__(app_name, module_name)
         # self.Ready_to_run = False # Nếu bắt buộc phải config thì đặt cái này = False, khi nào user chỉnh sang True thì mới cho chạy
         # self.end_point = "http://10.72.76.65:8088/api/smo/HandleData" #http://127.0.0.1:8000
-        self.instruction = ['http://10.72.76.65:8088/api/smo/HandleData']
-        self.end_point = "http://127.0.0.1:8000/api/echo"
+        self.instruction = ['http://10.72.76.65:8088/api/smo/HandleData','http://127.0.0.1:8000/api/echo']
+        self.end_point = "http://10.72.76.65:8088/api/smo/HandleData"
         self.method = "POST"
         self.headers = {"Content-Type": "application/json"}
-        self.LINE_NAME = "B81L4C1"
+        self.LINE_NAME = "B084FSF"
         self.GROUP_NAME = "VI"
         self.SP = "811,811"
         self.SN = "PT53SH0452060KV6"
         self.TRAY = "YO250414AA22LA09"
-        self.EMP = "CYCLOPS05"
+        self.EMP = "CYCLOPS01"
         self.PASSED = 1
         
         self.sfc_response_key1 = "Data"
         self.sfc_response_key2 = "RES"
         self.sfc_response_key3 = "COMMAND1"
         self.Data_send_to_SFC = {
-            "LINE_NAME":"B81L4C1",
+            "LINE_NAME":"B084FSF",
             "GROUP_NAME":"VI",
             "SP":"811,811",
             "DATA":""
@@ -174,7 +179,7 @@ class Request_SFC_Params(BaseParams):
         self.thickness_text_log_image = 2
         self.default_dir_log_image = './saved_images'
         self.default_dir_log_sn_pass = r"logs\pass_sn"
-        
+            
         self.create_or_load_yaml()   
     
 detect_lcd_params = Detect_LCD_Params(app_name=APP_NAME,module_name='Detect_LCD')
