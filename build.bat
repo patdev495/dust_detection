@@ -1,1 +1,0 @@
-pyinstaller --noconfirm app.py
