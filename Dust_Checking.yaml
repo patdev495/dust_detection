@@ -1,5 +1,5 @@
 Detect_LCD:
-  C: 4
+  C: 2
   block_size: 11
   kernel_blur_size:
   - 5
@@ -54,10 +54,10 @@ Abnormal_Inference:
   is_need_show_abnormal_score: true
   src_video: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
 Camera_Config:
-  camera_source: 0
+  camera_source: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
   camera_resolution:
-  - 2160
-  - 3840
+  - 1080
+  - 1920
   auto_exposure: 0.25
   prop_exposure: -5
   sensor_size:
@@ -71,12 +71,13 @@ Camera_Config:
   saturation: 60
   sharpness: 65
   zoom_in_factor: 1.05
-  cap_type_dshow: true
-  is_need_resize_frame: true
+  cap_type_dshow: false
+  is_need_resize_frame: false
   resize_resolution:
   - 1620
   - 2880
-  enable_mjpg_format: true
+  enable_mjpg_format: false
+  gain: 30
 System_Config:
   log_dir: logs
   debug: false
@@ -140,6 +141,3 @@ SFC_Config:
   thickness_text_log_image: 2
   default_dir_log_image: ./saved_images
   default_dir_log_sn_pass: logs\pass_sn
-  test_params:
-    name: PAT
-    age: 18

@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QFileDialog
 from src.global_params import detect_lcd_params
 
 #function to get exactly path of assets file in dev environment and exe environment
-def get_resource_path(relative_path):
+def get_resource_path(relative_path : str):
     """Lấy đường dẫn đúng cho file resource"""
     try:
         # PyInstaller tạo temp folder và lưu path trong _MEIPASS

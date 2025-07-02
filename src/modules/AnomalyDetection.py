@@ -1,4 +1,3 @@
-import time
 import cv2
 import numpy as np
 from anomalib.data import Folder
@@ -9,25 +8,37 @@ from anomalib.post_processing import PostProcessor
 from anomalib.pre_processing import PreProcessor
 from anomalib.utils.visualization import ImageResult
 from torchvision.transforms.v2 import Compose, Resize
-from src.modules.utils import get_resource_path,quick_stability_check
+from src.modules.utils import get_resource_path
 from src.global_params import detect_lcd_params,abnormal_inference_params,abnormal_train_params,system_config_params,camera_config_params
 import logging
-import datetime
+from typing import Union,Optional,Callable,TypedDict
+from src.modules.typed import CCDResult
 
 logger = logging.getLogger('app')
 
 class AnomalyDetection:
-    def __init__(self):
-        self.is_detected_CCD = False
-        self.is_abnormal = True
-        self.result_color = (0,0,255)
+    def __init__(self) -> None:
+        self.is_detected_CCD  = False
+        self.is_abnormal  = True
+        self.result_color  = (0,0,255)
         if abnormal_inference_params.inference_type.upper() == 'OPENVINO':
             self.inferencer = OpenVINOInferencer(get_resource_path(abnormal_inference_params.model_path))
 
         self.pixel_width = camera_config_params.sensor_size[0] /  3840 * 1000
         self.pixel_height = camera_config_params.sensor_size[1] /  2160 * 1000
-    def adaptive_image_to_binary(self,img):
-        """using adaptive threshold for image have lighting condition are not uniform"""
+    def adaptive_image_to_binary(self, img : np.ndarray | None) -> np.ndarray | None:
+        """
+        Converts a BGR image to a binary image using adaptive thresholding.
+            This method first converts the input image to grayscale, applies Gaussian blur to reduce noise,
+            and then performs adaptive thresholding to produce a binary image. The parameters for blurring
+            and thresholding are taken from the `detect_lcd_params` configuration.
+            Args:
+                img (np.ndarray): Input image in BGR format.
+            Returns:
+                np.ndarray: Binary image resulting from adaptive thresholding.
+        """   
+        if img is None:
+            return None
         gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
         # Làm mờ để giảm nhiễu (rất quan trọng trước adaptive)
@@ -44,8 +55,24 @@ class AnomalyDetection:
 
         return binary_image
 
-    def border_gaps_binary_image(self, binary_img):
+    def border_gaps_binary_image(self, binary_img : np.ndarray | None) -> np.ndarray | None:
+        """
+        Repairs border gaps in a binary image by performing morphological closing.
+        This method inverts the input binary image, applies morphological closing to connect
+        broken borders (gaps) using a rectangular kernel, and then inverts the image back to
+        its original polarity. The result is a binary image with repaired border gaps.
+        Args:
+            binary_img (np.ndarray | None): Input binary image. Should be a single-channel
+                image where foreground and background are represented by 0 and 255 values.
+                If None, the function returns None.
+        Returns:
+            np.ndarray | None: The binary image with repaired border gaps, or None if the
+                input is None.
+        """
+        
         # 1. Đảo ảnh: vùng đen thành trắng, vùng trắng thành đen
+        if binary_img is None:
+            return None
         inverted = cv2.bitwise_not(binary_img)
 
         # 2. Morph closing để nối vùng trắng (tức là nối lại viền đen trong ảnh gốc)
@@ -57,10 +84,18 @@ class AnomalyDetection:
         
         return repaired
     
-    def get_top_left_point_box(self,box):
+    def get_top_left_point_box(self, box : np.ndarray):
         """
-        get top left coordinates of the box to perform the translation .
+        Finds and returns the top-left point of a bounding box.
+        Given a 2D array representing the coordinates of the corners of a box,
+        this function identifies the point with the smallest sum of x and y coordinates,
+        which corresponds to the top-left corner.
+        Args:
+            box (np.ndarray): A (4, 2) array of box corner coordinates.
+        Returns:
+            tuple: The (x, y) coordinates of the top-left point as integers.
         """
+        
         box = np.array(box, dtype="float32")
 
         # Tính tổng x + y => top-left sẽ có tổng nhỏ nhất
@@ -69,7 +104,7 @@ class AnomalyDetection:
 
         return tuple(map(int, top_left))
     #nếu detect ra thì self.is_detected_LCD = True
-    def detect_ccd(self, img):
+    def detect_ccd(self, img : Union[str,np.ndarray]) -> CCDResult | None:
         self.is_detected_CCD = False
         if isinstance(img, str):
             img = cv2.imread(img)
@@ -92,7 +127,7 @@ class AnomalyDetection:
         max_valid_area = total_area * detect_lcd_params.max_LCD_area_ratio
 
         # find contours
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # type: ignore
         if not contours:
             return None
         
@@ -150,9 +185,9 @@ class AnomalyDetection:
         cropped_image = rotated_image[min_y:max_y, min_x:max_x]
         
         self.is_detected_LCD = True
-        return {
+        result : CCDResult = {
             "original_image": original_img,
-            "binary_image": binary_image,
+            "binary_image": binary_image, # type: ignore
             "rotated_image": rotated_image,
             "cropped_image": cropped_image,
             "ccd_box_original": box,
@@ -160,9 +195,10 @@ class AnomalyDetection:
             "ccd_box_rotated": rotated_box,
             'rotate_angle': angle,
             'center': center,
-        }
+        } 
+        return result
 
-    def test_detect_ccd(self,video_source):
+    def test_detect_ccd(self,video_source : Union[int,str]) -> None:
         cap = cv2.VideoCapture(video_source)
         if not cap.isOpened():
             logger.debug("Cannot open video source.")
@@ -183,7 +219,7 @@ class AnomalyDetection:
                 ccd_box_rotated = result["ccd_box_rotated"]
 
                 # Draw the CCD box on the rotated image
-                cv2.polylines(original_image, [ccd_box_original.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2)
+                cv2.polylines(original_image, [ccd_box_original.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2) # type: ignore
                 cv2.imshow("CCD Box on Rotated Image", original_image)
             else:
                 cv2.imshow("CCD Box on Rotated Image", frame)
@@ -191,11 +227,10 @@ class AnomalyDetection:
                 break
         cap.release()
         cv2.destroyAllWindows()
-
     ##
     ##
     ## check anomaly detection
-    def train(self):
+    def train(self) -> None:
         params = abnormal_train_params
         datamodule = Folder(
             name=params.dataset_name,
@@ -249,7 +284,7 @@ class AnomalyDetection:
         engine = Engine(accelerator=params.accelerator,default_root_dir='train_results')
         engine.train(datamodule=datamodule, model=self.model)
 
-    def inference(self,image):
+    def inference(self,image : Union[str,np.ndarray]) -> Optional[dict]:
         if isinstance(image, str):
             image = cv2.imread(image)
         if image is None:
@@ -267,7 +302,7 @@ class AnomalyDetection:
                 'heat_map':heat_map,
             }
 
-    def normalize_rgb_heatmap_sum(self, heatmap_rgb):
+    def normalize_rgb_heatmap_sum(self, heatmap_rgb:np.ndarray) -> np.ndarray:
         # Chuyển sang float để tránh tràn số khi cộng
         heatmap_rgb = heatmap_rgb.astype(np.float32)
         
@@ -286,13 +321,13 @@ class AnomalyDetection:
         
         return normalized_shifted  
 
-    def normalize_heatmap_to_binary(self, heat_map):
+    def normalize_heatmap_to_binary(self, heat_map:np.ndarray) -> np.ndarray:
         
         binary_map = np.zeros_like(heat_map, dtype=np.uint8)
         binary_map[heat_map >= abnormal_inference_params.heat_map_NG_thresh_hold] = 255
         return binary_map
 
-    def dust_detect_on_image(self, image):
+    def dust_detect_on_image(self, image: str | np.ndarray) -> None | tuple[np.ndarray,np.ndarray,bool,np.int32]:
         self.is_abnormal = True
         if isinstance(image, str):
             image = cv2.imread(image)

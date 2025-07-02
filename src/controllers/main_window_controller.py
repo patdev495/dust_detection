@@ -4,7 +4,10 @@ import time
 from datetime import datetime
 from openpyxl import Workbook, load_workbook
 import numpy as np
+from typing import Callable, Literal
 import os
+# import sys
+# sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__),"..","..")))
 from src.modules.AnomalyDetection import AnomalyDetection
 from src.modules.utils import quick_stability_check,calculate_focus_score,get_resource_path, open_file, draw_focus_score
 from PySide6.QtWidgets import QFileDialog
@@ -19,11 +22,13 @@ from PySide6.QtCore import (
     Signal,
     Slot,
 )
+
 from PySide6.QtGui import (
     QIcon,
     QImage,
     QPixmap,
 )
+
 from PySide6.QtWidgets import (
     QApplication,
     QLabel,
@@ -45,20 +50,18 @@ from src.global_params import (
 from src.views.main_window import Ui_MainWindow
 from src.modules.loggers import console_logger,operation_history_log
 
-
-
 class StreamVideoWorker(QObject):
     emit_frame_signal = Signal(object)
     finished_signal = Signal()
     
     def __init__(self,parent):
         super().__init__()
-        self._parent = parent
-        self.focus_score = 0
-        self.count_fr = 0
-        self.cap = None
-        self.is_running = False
-        self.abnormal_processing = None
+        self._parent :  MainWindowController = parent
+        self.focus_score : int = 0
+        self.count_fr : int = 0
+        self.cap : cv2.VideoCapture | None = None
+        self.is_running : bool = False
+        self.abnormal_processing : AnomalyDetection | None = None
         
         self.init_video_capture()
         #camera         
@@ -71,7 +74,7 @@ class StreamVideoWorker(QObject):
         if self.abnormal_processing is None:
             console_logger.error("Abnormal processing is None")
     
-    def rotate_image(self,image, angle):
+    def rotate_image(self,image: np.ndarray, angle : float) -> np.ndarray:
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)  # Tâm xoay là trung tâm ảnh
 
@@ -82,7 +85,7 @@ class StreamVideoWorker(QObject):
         rotated = cv2.warpAffine(image, M, (w, h))
         return rotated
 
-    def init_video_capture(self):
+    def init_video_capture(self) -> None:
         if self.cap is not None:
             console_logger.warning("current cap is not None")
             while self.cap is not None and self.cap.isOpened():
@@ -95,11 +98,11 @@ class StreamVideoWorker(QObject):
             if camera_config_params.cap_type_dshow:
                 self.cap = cv2.VideoCapture(self.source,cv2.CAP_DSHOW)
                 if camera_config_params.enable_mjpg_format:
-                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
             else:
                 self.cap = cv2.VideoCapture(self.source)
                 if camera_config_params.enable_mjpg_format:
-                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
                 
             # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
             if self.cap is None or not self.cap.isOpened():
@@ -110,11 +113,13 @@ class StreamVideoWorker(QObject):
                 self.contrast = camera_config_params.contrast
                 self.saturation = camera_config_params.saturation
                 self.sharpness = camera_config_params.sharpness
+                self.gain = camera_config_params.gain
                 ####
                 self.cap.set(cv2.CAP_PROP_BRIGHTNESS,self.brigtness )  # Brightness: thử từ 0 đến 255
                 self.cap.set(cv2.CAP_PROP_CONTRAST, self.contrast)
                 self.cap.set(cv2.CAP_PROP_SATURATION, self.saturation)
                 self.cap.set(cv2.CAP_PROP_SHARPNESS,self.sharpness)
+                self.cap.set(cv2.CAP_PROP_GAIN, self.gain)
 
             self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_config_params.camera_resolution[1])
             self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_config_params.camera_resolution[0])
@@ -126,7 +131,7 @@ class StreamVideoWorker(QObject):
             console_logger.error(f'Cannot open video capture: {e}\n')
             operation_history_log.error(f'Cannot open video capture: {e}\n')
 
-    def start_stream_video(self):
+    def start_stream_video(self) -> None:
         self.count_fr = 0
         self.is_running = True
         # self.init_video_capture()
@@ -207,7 +212,7 @@ class StreamVideoWorker(QObject):
             self.cap = None
         self.finished_signal.emit()
 
-    def stop(self):
+    def stop(self) -> None:
         self.is_running = False
         self.finished_signal.emit()
         if self.cap is not None:
@@ -217,31 +222,30 @@ class StreamVideoWorker(QObject):
                 self.cap = None
                 cv2.destroyAllWindows()
             console_logger.info("Stop camera successfully, release cap done!")
-
 # # project
 class SFCWorker(QObject):
     # finished = Signal(object)
     sent_request_data = Signal(object)
 
-    def __init__(self, request_func):
+    def __init__(self, request_func : Callable) -> None:
         super().__init__()
-        self._data = None
-        self.request_func = request_func
+        self._data : dict | None = None
+        self.request_func  = request_func
 
     @Slot(dict)
-    def run(self,data):
+    def run(self,data : dict) -> None:
         try:
             console_logger.debug(f"Request data: {data}")
-            # Giả sử đây là hàm gọi API
+            # đây là hàm gọi API
             response = self.request_func(data=data)
             self.sent_request_data.emit(response)
 
         except Exception as e:
-            console_logger.debug("failed exception: ",e)
+            console_logger.debug("failed exception request SFC: ",e)
 
 class MainWindowController(QMainWindow, Ui_MainWindow):
-    send_data_signal = Signal(dict)
-    def __init__(self):
+    send_data_signal : Signal = Signal(dict)
+    def __init__(self) -> None:
         super().__init__()
         self.setupUi(self)
         self.init_variables()
@@ -251,11 +255,11 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.init_thread_stream_video()
         operation_history_log.info("Open application\n")
     
-    def init_variables(self):
+    def init_variables(self) -> None:
         # system
         self.ok_frame_count = 0  # count abnormal frame to decided NG or OK
         self.status_result = None # status result of process
-        self.is_abnormal = True # is abnormal or not
+        self.is_abnormal : None | bool = True # is abnormal or not
         self.image_need_process = "" #image in process type is image
         self.is_running_stream = False # is running stream camera
         self.input_mac_value = ""  # mac address input
@@ -291,7 +295,10 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
         self.cycle_time_list = []
     
-    def mock_funtions_base(self):
+    def mock_funtions_base(self) -> None:
+        """
+        Hàm gắn các function cho các phần tử UI của giao diện dùng chung cho các dự án 
+        """
         def process_one_image():
             try:
                 if self.stream_video_worker is not None:
@@ -370,7 +377,8 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         )
         self.focus_timer.start()
 
-    def update_process_type_mode(self):
+    def update_process_type_mode(self) -> None:
+        """Hàm update UI của processtype"""
         style = """
             background-color: #a9dfbf;
             color: black;
@@ -386,7 +394,8 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             self.ui_process_type_image_label.setStyleSheet(style)
             self.ui_proces_type_camera_label.setStyleSheet("")
 
-    def init_style_sheet(self):
+    def init_style_sheet(self) -> None:
+        """Khởi tạo style cho các phần tử giao diện"""
         self.update_process_type_mode()
         self.ui_open_config_file_btn.setStyleSheet("""
                                                    
@@ -433,7 +442,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_stop_camera_btn.setIcon(icon1)
         self.ui_stop_camera_btn.setIconSize(QSize(27, 27))
 
-    def on_stream_thread_finished(self):
+    def on_stream_thread_finished(self) -> None:
         """Chạy sau khi thread dừng hẳn"""
         self.ui_open_image_btn.setDisabled(False)
         self.ui_auto_process_check_box.setEnabled(False)
@@ -456,7 +465,8 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         )
         self.ui_status_label.setText(system_config_params.normal_status_label_text)
 
-    def init_thread_stream_video(self):
+    def init_thread_stream_video(self) -> None:
+        """Khởi tạo thread để đọc luồng video và emit về giao diện chính """
         if self.stream_video_thread is not None:
             console_logger.warning("Current stream thread is not None")
             self.stop_current_thread()
@@ -495,74 +505,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         except Exception as e:
             console_logger.error(f"Failed when init stream video thread: {e}")
 
-    # def init_video_capture(self):
-    # # Thêm delay nhỏ để đảm bảo camera được giải phóng hoàn toàn
-    #     if self.cap is not None:
-    #         self.cap.release()
-    #         self.cap = None
-    #         time.sleep(0.1)  # Thêm delay 100ms
-        
-    #     try:
-    #         self.source = camera_config_params.camera_source
-            
-    #         # Thử với các backend khác nhau
-    #         backends = [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
-            
-    #         for backend in backends:
-    #             try:
-    #                 self.cap = cv2.VideoCapture(self.source, backend)
-    #                 if self.cap is not None and self.cap.isOpened():
-    #                     console_logger.info(f"Camera opened successfully with backend: {backend}")
-    #                     break
-    #                 else:
-    #                     if self.cap is not None:
-    #                         self.cap.release()
-    #                         self.cap = None
-    #             except Exception as e:
-    #                 console_logger.warning(f"Failed to open camera with backend {backend}: {e}")
-    #                 continue
-            
-    #         if self.cap is None or not self.cap.isOpened():
-    #             console_logger.error("Cannot opened video capture with any backend!")
-    #             return False
-                
-    #         # Set properties...
-    #         if camera_config_params.manual_setting:
-    #             # Kiểm tra xem property có được hỗ trợ không trước khi set
-    #             if self.cap.get(cv2.CAP_PROP_BRIGHTNESS) != -1:
-    #                 self.cap.set(cv2.CAP_PROP_BRIGHTNESS, camera_config_params.brightness)
-    #             if self.cap.get(cv2.CAP_PROP_CONTRAST) != -1:
-    #                 self.cap.set(cv2.CAP_PROP_CONTRAST, camera_config_params.contrast)
-    #             # ... tương tự cho các property khác
-
-    #         self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_config_params.camera_resolution[1])
-    #         self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_config_params.camera_resolution[0])
-            
-    #         return True
-            
-    #     except Exception as e:
-    #         console_logger.error(f'Cannot open video capture: {e}\n')
-    #         operation_history_log.error(f'Cannot open video capture: {e}\n')
-    #         return False
-    # def stop_current_thread(self):
-    #     """Properly stop and clean up the current thread"""
-    #     if self.stream_video_thread is not None:
-    #         # Stop the worker first
-    #         if hasattr(self, 'stream_video_worker') and self.stream_video_worker is not None:
-    #             self.stream_video_worker.is_running = False
-                
-    #         # Wait for thread to finish properly
-    #         if self.stream_video_thread.isRunning():
-    #             self.stream_video_thread.quit()
-    #             if not self.stream_video_thread.wait(3000):  # Wait max 3 seconds
-    #                 console_logger.warning("Thread did not finish gracefully, terminating...")
-    #                 self.stream_video_thread.terminate()
-    #                 self.stream_video_thread.wait()
-            
-    #         self.stream_video_thread = None
-    #         self.stream_video_worker = None 
-    
-    def stop_current_thread(self):
+    def stop_current_thread(self) -> None:
         """Dừng stream hiện tại một cách an toàn"""
         if self.stream_video_thread is not None:
             try:
@@ -581,7 +524,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             self.stream_video_worker = None
             print(1)
 
-    def start_stream(self):
+    def start_stream(self) -> None:
         # check if is exist stream camera thread
         self.image_need_process = ""
         self.ui_start_camera_btn.setDisabled(True)
@@ -595,7 +538,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_open_image_btn.setDisabled(True)
         self.ui_stop_camera_btn.setDisabled(False)
             
-    def stop_stream(self):
+    def stop_stream(self) -> None:
         self.ui_stop_camera_btn.setDisabled(True)
         operation_history_log.info("Stop camera!\n")
         console_logger.info("Stop camera!")
@@ -610,7 +553,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_open_image_btn.setDisabled(False)
         # self.stop_current_thread()
 
-    def set_background_label(self, label: QLabel, cv_image):
+    def set_background_label(self, label: QLabel, cv_image: np.ndarray | str | None) -> None:
         """
         Hiển thị ảnh OpenCV lên QLabel.
 
@@ -619,7 +562,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         """
 
         if cv_image is None:
-
             return
         if isinstance(cv_image, str):
             cv_image = cv2.imread(cv_image)
@@ -645,7 +587,18 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setPixmap(pixmap)
 
-    def expand_box(self,box, expand_pixels):
+    def expand_box(self,box , expand_pixels):
+        """
+            Expands a given quadrilateral box by a specified number of pixels in all directions.
+            This function calculates the minimum area rotated rectangle that encloses the input box,
+            expands its width and height by `2 * expand_pixels`, and returns the coordinates of the
+            expanded rectangle as a polygon.
+            Args:
+                box (array-like): An array of shape (4, 2) representing the four corner points of the box.
+                expand_pixels (int or float): The number of pixels to expand the box in all directions.
+            Returns:
+                numpy.ndarray: An array of shape (4, 1, 2) containing the integer coordinates of the expanded box corners.        
+        """
         # Bước 1: Tính rotated rectangle (minAreaRect)
         rect = cv2.minAreaRect(box)  # rect = ((cx, cy), (w, h), angle)
 
@@ -661,7 +614,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         return box_points
 
     @Slot(object)
-    def update_stream_camera(self, data):
+    def update_stream_camera(self, data : list[np.ndarray | int] | tuple[np.ndarray,int,bool,list[int]]):
         # if not self.is_auto_process:
         if len(data) == 2:
             self.ok_frame_count = 0
@@ -699,22 +652,22 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                 self.is_abnormal = True
                 
             if self.is_abnormal and original_box is not None:
-                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ng_color, 2, cv2.LINE_AA)
+                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ng_color, 2, cv2.LINE_AA) # type: ignore
             elif not self.is_abnormal and original_box is not None:
-                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ok_color, 2, cv2.LINE_AA)
+                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ok_color, 2, cv2.LINE_AA) # type: ignore
 
             cv2.putText(
-                display_image,
+                display_image, # type: ignore
                 f"FPS: {fps:.1f}",
                 (10, 30),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=1,
                 color=(0, 255, 0),
                 thickness=2,
-            )
+            ) # type: ignore
 
             if display_image is not None:
-                self.current_processing_image = display_image.copy()  # Lưu ảnh hiện tại để xử lý sau
+                self.current_processing_image = display_image.copy()  # type: ignore # Lưu ảnh hiện tại để xử lý sau
 
             if not self.is_abnormal:
                 self.ui_status_label.setStyleSheet(
@@ -730,18 +683,18 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         # self.set_background_label(self.ui_label_display_video, display_image)
         self.ui_label_display_video.setImage(display_image)
 
-    def set_system_message(self, text, color="red"):
+    def set_system_message(self, text : str, color : Literal['red','green'] ="red") -> None:
         self.ui_system_message_label.setText(text)
         self.ui_system_message_label.setStyleSheet(
             f"background-color: {color}; font-weight: bold; color: white"
         )
     
-    def validator_mac_input(self, mac_value: str):
+    def validator_mac_input(self, mac_value: str) -> bool:
         return mac_value.startswith(
             product_config_params.mac_start_with
         )  
     
-    def handle_mac_input_changed(self, new_text):
+    def handle_mac_input_changed(self, new_text: str) -> None:
         min_len = product_config_params.mac_min_len
         if len(new_text) >= min_len and not self.is_calling_sfc and self.is_running_stream and self.is_auto_process:
             is_valid_mac = self.validator_mac_input(new_text[0:min_len])
@@ -788,7 +741,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                         )
                     self.ui_mac_input.setText("")
 
-    def send_sfc_request(self, data):
+    def send_sfc_request(self, data : dict) -> None:
         if self.is_calling_sfc:
             return  # tránh xử lý đồng thời
 
@@ -797,7 +750,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         # Gọi method process của worker trong thread
         self.send_data_signal.emit(data)
 
-    def create_sfc_req_res_thread(self):
+    def create_sfc_req_res_thread(self) -> None:
         # self.is_calling_sfc = True
         try:
             self.sfc_request_thread = QThread()
@@ -812,7 +765,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         except Exception as e:
             console_logger.error(f"Failed when create sfc request thread: {e}")
 
-    def handle_sfc_result(self, sfc_response):
+    def handle_sfc_result(self, sfc_response : dict) -> None:
         self.is_calling_sfc = False
         if sfc_response is not None:
             try:
@@ -866,11 +819,11 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         
     def request_sfc(
         self,
-        url=sfc_request_params.end_point,
-        method=sfc_request_params.method,
-        data=None,
-        headers=sfc_request_params.headers,
-    ):
+        url : str =sfc_request_params.end_point,
+        method : str =sfc_request_params.method,
+        data : None | dict = None,
+        headers : dict = sfc_request_params.headers,
+    ) -> dict | str:
         self.sfc_failed = True
         try:
             if method == "GET":
@@ -889,10 +842,10 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
                 return res
         except Exception as e:
-            res = (f"Lỗi khi gọi API: {e}",)
+            res = f"Lỗi khi gọi API: {e}"
             return res
 
-    def write_log_to_excel(self,log_text: str, log_dir: str = sfc_request_params.default_dir_log_sn_pass):
+    def write_log_to_excel(self,log_text: str, log_dir: str = sfc_request_params.default_dir_log_sn_pass) -> None:
         # Đảm bảo thư mục log tồn tại
         os.makedirs(log_dir, exist_ok=True)
 
@@ -917,9 +870,16 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         wb.save(file_path)
 
     def save_pass_image(
-        self, image, text, base_dir=sfc_request_params.default_dir_log_image
-    ):
+        self,
+        image : np.ndarray | None,
+        text : str,
+        base_dir : str =sfc_request_params.default_dir_log_image
+    ) -> None:
         # Lấy thời gian hiện tại
+        if image is None:
+            console_logger.error("Image is none, cannot save")
+            operation_history_log.error("Image is none, cannot save")
+            return
         now = datetime.now()
         self.ui_last_mac_input.setText(self.input_mac_value)
         timestamp_str = now.strftime("%d/%m/%Y %H:%M:%S")  # Dùng để vẽ lên ảnh
@@ -982,7 +942,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         console_logger.info(f'Save image {filename} successfully')
         print(f"✅ Ảnh đã lưu: {filename}")
 
-    def closeEvent(self, event):
+    def closeEvent(self, event) -> None:
         self.stop_current_thread()
         if self.sfc_worker is not None:
             self.sfc_worker.deleteLater()
