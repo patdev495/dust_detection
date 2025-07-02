@@ -6,10 +6,17 @@ from openpyxl import Workbook, load_workbook
 import numpy as np
 from typing import Callable, Literal
 import os
+
 # import sys
 # sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__),"..","..")))
 from src.modules.AnomalyDetection import AnomalyDetection
-from src.modules.utils import quick_stability_check,calculate_focus_score,get_resource_path, open_file, draw_focus_score
+from src.modules.utils import (
+    quick_stability_check,
+    calculate_focus_score,
+    get_resource_path,
+    open_file,
+    draw_focus_score,
+)
 from PySide6.QtWidgets import QFileDialog
 import cv2
 import requests
@@ -29,12 +36,7 @@ from PySide6.QtGui import (
     QPixmap,
 )
 
-from PySide6.QtWidgets import (
-    QApplication,
-    QLabel,
-    QMainWindow,
-    QMessageBox
-)
+from PySide6.QtWidgets import QApplication, QLabel, QMainWindow, QMessageBox
 
 from src.global_params import (
     camera_config_params,
@@ -45,27 +47,29 @@ from src.global_params import (
     save_all_config,
     system_config_params,
 )
+
 # sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 # from views.main_window  import Ui_MainWindow  # tên class tuỳ thuộc file ui của bạn
 from src.views.main_window import Ui_MainWindow
-from src.modules.loggers import console_logger,operation_history_log
+from src.modules.loggers import console_logger, operation_history_log
+
 
 class StreamVideoWorker(QObject):
     emit_frame_signal = Signal(object)
     finished_signal = Signal()
-    
-    def __init__(self,parent):
+
+    def __init__(self, parent):
         super().__init__()
-        self._parent :  MainWindowController = parent
-        self.focus_score : int = 0
-        self.count_fr : int = 0
-        self.cap : cv2.VideoCapture | None = None
-        self.is_running : bool = False
-        self.abnormal_processing : AnomalyDetection | None = None
-        
+        self._parent: MainWindowController = parent
+        self.focus_score: int = 0
+        self.count_fr: int = 0
+        self.cap: cv2.VideoCapture | None = None
+        self.is_running: bool = False
+        self.abnormal_processing: AnomalyDetection | None = None
+
         self.init_video_capture()
-        #camera         
-        
+        # camera
+
         try:
             self.abnormal_processing = AnomalyDetection()
         except Exception as e:
@@ -73,8 +77,8 @@ class StreamVideoWorker(QObject):
             operation_history_log.error(f"Error initializing StreamVideoWorker: {e}")
         if self.abnormal_processing is None:
             console_logger.error("Abnormal processing is None")
-    
-    def rotate_image(self,image: np.ndarray, angle : float) -> np.ndarray:
+
+    def rotate_image(self, image: np.ndarray, angle: float) -> np.ndarray:
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)  # Tâm xoay là trung tâm ảnh
 
@@ -96,14 +100,14 @@ class StreamVideoWorker(QObject):
         try:
             self.source = camera_config_params.camera_source
             if camera_config_params.cap_type_dshow:
-                self.cap = cv2.VideoCapture(self.source,cv2.CAP_DSHOW)
+                self.cap = cv2.VideoCapture(self.source, cv2.CAP_DSHOW)
                 if camera_config_params.enable_mjpg_format:
-                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
             else:
                 self.cap = cv2.VideoCapture(self.source)
                 if camera_config_params.enable_mjpg_format:
-                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*'MJPG'))
-                
+                    self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter.fourcc(*"MJPG"))
+
             # self.cap.set(cv2.CAP_PROP_FOURCC, cv2.VideoWriter_fourcc(*'MJPG'))
             if self.cap is None or not self.cap.isOpened():
                 console_logger.error("Cannot opened video capture!")
@@ -115,21 +119,27 @@ class StreamVideoWorker(QObject):
                 self.sharpness = camera_config_params.sharpness
                 self.gain = camera_config_params.gain
                 ####
-                self.cap.set(cv2.CAP_PROP_BRIGHTNESS,self.brigtness )  # Brightness: thử từ 0 đến 255
+                self.cap.set(
+                    cv2.CAP_PROP_BRIGHTNESS, self.brigtness
+                )  # Brightness: thử từ 0 đến 255
                 self.cap.set(cv2.CAP_PROP_CONTRAST, self.contrast)
                 self.cap.set(cv2.CAP_PROP_SATURATION, self.saturation)
-                self.cap.set(cv2.CAP_PROP_SHARPNESS,self.sharpness)
+                self.cap.set(cv2.CAP_PROP_SHARPNESS, self.sharpness)
                 self.cap.set(cv2.CAP_PROP_GAIN, self.gain)
 
-            self.cap.set(cv2.CAP_PROP_FRAME_WIDTH, camera_config_params.camera_resolution[1])
-            self.cap.set(cv2.CAP_PROP_FRAME_HEIGHT, camera_config_params.camera_resolution[0])
+            self.cap.set(
+                cv2.CAP_PROP_FRAME_WIDTH, camera_config_params.camera_resolution[1]
+            )
+            self.cap.set(
+                cv2.CAP_PROP_FRAME_HEIGHT, camera_config_params.camera_resolution[0]
+            )
             self.cap.set(cv2.CAP_PROP_AUTO_EXPOSURE, camera_config_params.auto_exposure)
             # 0.25 = Manual mode for some cameras
             if isinstance(camera_config_params.prop_exposure, int):
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_config_params.prop_exposure)
         except Exception as e:
-            console_logger.error(f'Cannot open video capture: {e}\n')
-            operation_history_log.error(f'Cannot open video capture: {e}\n')
+            console_logger.error(f"Cannot open video capture: {e}\n")
+            operation_history_log.error(f"Cannot open video capture: {e}\n")
 
     def start_stream_video(self) -> None:
         self.count_fr = 0
@@ -143,11 +153,11 @@ class StreamVideoWorker(QObject):
             ret, frame = self.cap.read()
             if not ret:
                 continue
-            
-            if camera_config_params.is_need_rotate_camera:
-                frame = self.rotate_image(frame,camera_config_params.rotate_angle)
 
-            if self.source != 0 :
+            if camera_config_params.is_need_rotate_camera:
+                frame = self.rotate_image(frame, camera_config_params.rotate_angle)
+
+            if self.source != 0:
                 frame = cv2.resize(
                     frame,
                     (
@@ -157,56 +167,75 @@ class StreamVideoWorker(QObject):
                 )
             if camera_config_params.is_need_resize_frame:
                 frame = cv2.resize(
-                        frame,
-                        (
-                            camera_config_params.resize_resolution[1],
-                            camera_config_params.resize_resolution[0],
-                        ),
-                    )
+                    frame,
+                    (
+                        camera_config_params.resize_resolution[1],
+                        camera_config_params.resize_resolution[0],
+                    ),
+                )
             end = time.time()
             fps = 1 / (end - start + 1e-5)
             self.count_fr += 1
-            #process at here
+            # process at here
             if not self._parent.is_running_stream:
                 console_logger.debug("is running stream: false")
-                continue 
+                continue
             if not self._parent.is_auto_process:
                 if system_config_params.show_image_focus_score:
                     now = datetime.now().second
                     if now % system_config_params.skip_frames_show_focus == 0:
                         self.focus_score = math.floor(calculate_focus_score(frame))
-                    draw_focus_score(frame,self.focus_score)
+                    draw_focus_score(frame, self.focus_score)
 
                 self.emit_frame_signal.emit([frame, fps])
                 self._parent.is_abnormal = None
             else:
                 if detect_lcd_params.is_need_check_stable_frames:
                     should_process, score = quick_stability_check(frame)
-                    console_logger.debug(f"Quick stability check: should_process={should_process}, score={score}")
+                    console_logger.debug(
+                        f"Quick stability check: should_process={should_process}, score={score}"
+                    )
                     if not should_process:
                         self.emit_frame_signal.emit([frame, fps])
                         # self._parent.is_abnormal = None
                         continue
-                       
-                image_with_heatmap, image_with_dust, is_abnormal, original_box = None, None, None, None
+
+                image_with_heatmap, image_with_dust, is_abnormal, original_box = (
+                    None,
+                    None,
+                    None,
+                    None,
+                )
                 start_time = datetime.now()
                 if self.abnormal_processing is not None:
-                    abnormal_detect_result = self.abnormal_processing.dust_detect_on_image(frame)
+                    abnormal_detect_result = (
+                        self.abnormal_processing.dust_detect_on_image(frame)
+                    )
                 end_time = datetime.now()
                 fps = 1 / ((end_time - start_time).total_seconds() + 1e-5)
                 if abnormal_detect_result is None:
                     self.emit_frame_signal.emit([frame, fps])
                     self._parent.is_abnormal = None
-                    console_logger.warning("Abnormal detection returned None, skipping frame.")
+                    console_logger.warning(
+                        "Abnormal detection returned None, skipping frame."
+                    )
                 else:
-                    image_with_heatmap,image_with_dust, is_abnormal,original_box = abnormal_detect_result
+                    image_with_heatmap, image_with_dust, is_abnormal, original_box = (
+                        abnormal_detect_result
+                    )
                     if self._parent.ui_heat_map_radio_btn.isChecked():
-                        self.emit_frame_signal.emit([image_with_heatmap, fps, is_abnormal,original_box])
+                        self.emit_frame_signal.emit(
+                            [image_with_heatmap, fps, is_abnormal, original_box]
+                        )
                     elif self._parent.ui_segment_radio_btn.isChecked():
-                        self.emit_frame_signal.emit([image_with_dust, fps , is_abnormal,original_box])
+                        self.emit_frame_signal.emit(
+                            [image_with_dust, fps, is_abnormal, original_box]
+                        )
                     else:
-                        self.emit_frame_signal.emit([frame, fps , is_abnormal,original_box])
-                        
+                        self.emit_frame_signal.emit(
+                            [frame, fps, is_abnormal, original_box]
+                        )
+
         if self.cap is not None:
             self.cap.release()
             self.cap = None
@@ -222,18 +251,20 @@ class StreamVideoWorker(QObject):
                 self.cap = None
                 cv2.destroyAllWindows()
             console_logger.info("Stop camera successfully, release cap done!")
+
+
 # # project
 class SFCWorker(QObject):
     # finished = Signal(object)
     sent_request_data = Signal(object)
 
-    def __init__(self, request_func : Callable) -> None:
+    def __init__(self, request_func: Callable) -> None:
         super().__init__()
-        self._data : dict | None = None
-        self.request_func  = request_func
+        self._data: dict | None = None
+        self.request_func = request_func
 
     @Slot(dict)
-    def run(self,data : dict) -> None:
+    def run(self, data: dict) -> None:
         try:
             console_logger.debug(f"Request data: {data}")
             # đây là hàm gọi API
@@ -241,10 +272,12 @@ class SFCWorker(QObject):
             self.sent_request_data.emit(response)
 
         except Exception as e:
-            console_logger.debug("failed exception request SFC: ",e)
+            console_logger.debug("failed exception request SFC: ", e)
+
 
 class MainWindowController(QMainWindow, Ui_MainWindow):
-    send_data_signal : Signal = Signal(dict)
+    send_data_signal: Signal = Signal(dict)
+
     def __init__(self) -> None:
         super().__init__()
         self.setupUi(self)
@@ -254,24 +287,22 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.create_sfc_req_res_thread()
         self.init_thread_stream_video()
         operation_history_log.info("Open application\n")
-    
+
     def init_variables(self) -> None:
         # system
         self.ok_frame_count = 0  # count abnormal frame to decided NG or OK
-        self.status_result = None # status result of process
-        self.is_abnormal : None | bool = True # is abnormal or not
-        self.image_need_process = "" #image in process type is image
-        self.is_running_stream = False # is running stream camera
+        self.status_result = None  # status result of process
+        self.is_abnormal: None | bool = True  # is abnormal or not
+        self.image_need_process = ""  # image in process type is image
+        self.is_running_stream = False  # is running stream camera
         self.input_mac_value = ""  # mac address input
         self.is_auto_process = system_config_params.is_auto_process
         self.is_debug = system_config_params.debug
         self.process_type = 0
         self.ui_segment_radio_btn.setChecked(True)
-        self.current_processing_image = None 
-        self.is_calling_sfc = False # default process type is segment
+        self.current_processing_image = None
+        self.is_calling_sfc = False  # default process type is segment
 
-
-        
         self.sum_ok_products = product_config_params.sum_ok_products
         self.sum_ng_products = product_config_params.sum_ng_products
         if self.image_need_process == "":
@@ -281,11 +312,11 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             # self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
         self.ui_stop_camera_btn.setDisabled(True)
         self.ui_mac_input.setEnabled(False)
-        
+
         self.ui_auto_process_check_box.setChecked(self.is_auto_process)
         self.ui_debug_check_box.setChecked(self.is_debug)
         self.ui_auto_process_check_box.setEnabled(False)
-        
+
         self.stream_video_worker = None
         self.stream_video_thread = None
 
@@ -294,16 +325,19 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.cycle_time = 0
 
         self.cycle_time_list = []
-    
+
     def mock_funtions_base(self) -> None:
         """
-        Hàm gắn các function cho các phần tử UI của giao diện dùng chung cho các dự án 
+        Hàm gắn các function cho các phần tử UI của giao diện dùng chung cho các dự án
         """
+
         def process_one_image():
             try:
                 if self.stream_video_worker is not None:
                     if self.stream_video_worker.abnormal_processing is not None:
-                        result = self.stream_video_worker.abnormal_processing.dust_detect_on_image(self.image_need_process)
+                        result = self.stream_video_worker.abnormal_processing.dust_detect_on_image(
+                            self.image_need_process
+                        )
                         if result is not None:
                             if not self.ui_heat_map_radio_btn.isChecked():
                                 self.ui_label_display_video.setImage(result[1])
@@ -311,25 +345,29 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                                 self.ui_label_display_video.setImage(result[0])
                             print("ok")
             except Exception as e:
-                QMessageBox.information(None, "Error",f"{e}")
-                    
-        #change debug console_logger level
+                QMessageBox.information(None, "Error", f"{e}")
+
+        # change debug console_logger level
         def on_debug_state_changed(state):
             self.is_debug = self.ui_debug_check_box.isChecked()
             print(f"Debug: {self.is_debug}")
             system_config_params.debug = self.is_debug
-            console_logger.setLevel(logging.DEBUG if self.ui_debug_check_box.isChecked() else logging.INFO)
-            
+            console_logger.setLevel(
+                logging.DEBUG if self.ui_debug_check_box.isChecked() else logging.INFO
+            )
+
         self.ui_debug_check_box.stateChanged.connect(on_debug_state_changed)
 
-        #start and stop stream camera
+        # start and stop stream camera
         self.ui_start_camera_btn.clicked.connect(self.start_stream)
         self.ui_stop_camera_btn.clicked.connect(self.stop_stream)
 
-        #open image button
+        # open image button
         def click_open_image():
             # Mở hộp thoại chọn file ảnh
-            file_path, _ = QFileDialog.getOpenFileName(None, "Open Image", "", "Image Files (*.png *.jpg *.bmp *.jpeg *.WEBP)")   
+            file_path, _ = QFileDialog.getOpenFileName(
+                None, "Open Image", "", "Image Files (*.png *.jpg *.bmp *.jpeg *.WEBP)"
+            )
             if file_path:
                 self.ui_process_btn.setDisabled(False)
                 self.image_need_process = file_path
@@ -342,32 +380,30 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                 # self.ui_process_btn.setStyleSheet("border: 2px solid a9dfbf ")
             else:
                 self.ui_process_btn.setEnabled(True)
+
         self.ui_open_image_btn.clicked.connect(click_open_image)
         self.ui_process_btn.clicked.connect(process_one_image)
 
-
-        #save all config button
+        # save all config button
         self.ui_save_all_config_btn.triggered.connect(lambda: save_all_config())
-        
-        #auto process button change state
+
+        # auto process button change state
         def handle_autoprocess_change(state):
             self.is_auto_process = self.ui_auto_process_check_box.isChecked()
             system_config_params.is_auto_process = self.is_auto_process
 
-        self.ui_auto_process_check_box.stateChanged.connect(
-            handle_autoprocess_change
-        )
+        self.ui_auto_process_check_box.stateChanged.connect(handle_autoprocess_change)
 
-        #input mac change value
+        # input mac change value
 
         self.ui_mac_input.textChanged.connect(self.handle_mac_input_changed)
 
-        #open config button
+        # open config button
         self.ui_open_config_file_btn.clicked.connect(
             lambda: open_file(system_config_params.config_file_path)
         )
 
-        #set focus to mac input
+        # set focus to mac input
         self.focus_timer = QTimer(self)
         self.focus_timer.setInterval(system_config_params.time_to_focus_mac_input)
         self.focus_timer.timeout.connect(
@@ -414,11 +450,11 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.set_background_label(
             self.ui_logo_info_label, get_resource_path(r"src\assets\IVIS.png")
         )
-        
+
         QTimer.singleShot(
             0,
             lambda: self.ui_label_display_video.setImage(
-                get_resource_path("src/assets/IVIS.png")  
+                get_resource_path("src/assets/IVIS.png")
             ),
         )
 
@@ -466,16 +502,14 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_status_label.setText(system_config_params.normal_status_label_text)
 
     def init_thread_stream_video(self) -> None:
-        """Khởi tạo thread để đọc luồng video và emit về giao diện chính """
+        """Khởi tạo thread để đọc luồng video và emit về giao diện chính"""
         if self.stream_video_thread is not None:
             console_logger.warning("Current stream thread is not None")
             self.stop_current_thread()
         try:
             self.stream_video_thread = QThread()
             self.stream_video_worker = StreamVideoWorker(self)
-            self.stream_video_worker.moveToThread(
-                self.stream_video_thread
-            )
+            self.stream_video_worker.moveToThread(self.stream_video_thread)
             self.stream_video_thread.started.connect(
                 self.stream_video_worker.start_stream_video
             )
@@ -487,9 +521,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                 self.stream_video_thread.quit
             )
 
-            self.stream_video_thread.finished.connect(
-                self.on_stream_thread_finished
-            )
+            self.stream_video_thread.finished.connect(self.on_stream_thread_finished)
 
             self.stream_video_thread.finished.connect(
                 self.stream_video_worker.deleteLater
@@ -509,14 +541,16 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         """Dừng stream hiện tại một cách an toàn"""
         if self.stream_video_thread is not None:
             try:
-                    if self.stream_video_worker is not None:
-                        self.stream_video_worker.stop()
-                    if not self.stream_video_thread.wait(5000):
-                        console_logger.warning("Thread không dừng được, force terminate")
-                        self.stream_video_thread.terminate()
-                        self.stream_video_thread.wait()
-                    
-                    console_logger.info("Thread đã dừng thành công")  # Wait for the thread to finish
+                if self.stream_video_worker is not None:
+                    self.stream_video_worker.stop()
+                if not self.stream_video_thread.wait(5000):
+                    console_logger.warning("Thread không dừng được, force terminate")
+                    self.stream_video_thread.terminate()
+                    self.stream_video_thread.wait()
+
+                console_logger.info(
+                    "Thread đã dừng thành công"
+                )  # Wait for the thread to finish
             except RuntimeError as e:
                 print(f"Error stopping thread: {e}")
 
@@ -532,12 +566,12 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         console_logger.info("Start camera!")
         self.is_running_stream = True
         # self.init_thread_stream_video()
-        #change UI
+        # change UI
         self.ui_auto_process_check_box.setEnabled(True)
         self.ui_mac_input.setEnabled(True)
         self.ui_open_image_btn.setDisabled(True)
         self.ui_stop_camera_btn.setDisabled(False)
-            
+
     def stop_stream(self) -> None:
         self.ui_stop_camera_btn.setDisabled(True)
         operation_history_log.info("Stop camera!\n")
@@ -547,13 +581,15 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.input_mac_value = ""
         self.input_tray_value = ""
         # self.set_background_label(self.ui_label_display_video,get_resource_path(r'src\assets\IVIS.png'))
-        self.ui_label_display_video.setImage(get_resource_path(r'src\assets\IVIS.png'))
+        self.ui_label_display_video.setImage(get_resource_path(r"src\assets\IVIS.png"))
         self.ui_start_camera_btn.setDisabled(False)
         self.ui_mac_input.setDisabled(True)
         self.ui_open_image_btn.setDisabled(False)
         # self.stop_current_thread()
 
-    def set_background_label(self, label: QLabel, cv_image: np.ndarray | str | None) -> None:
+    def set_background_label(
+        self, label: QLabel, cv_image: np.ndarray | str | None
+    ) -> None:
         """
         Hiển thị ảnh OpenCV lên QLabel.
 
@@ -587,17 +623,17 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setPixmap(pixmap)
 
-    def expand_box(self,box , expand_pixels):
+    def expand_box(self, box, expand_pixels):
         """
-            Expands a given quadrilateral box by a specified number of pixels in all directions.
-            This function calculates the minimum area rotated rectangle that encloses the input box,
-            expands its width and height by `2 * expand_pixels`, and returns the coordinates of the
-            expanded rectangle as a polygon.
-            Args:
-                box (array-like): An array of shape (4, 2) representing the four corner points of the box.
-                expand_pixels (int or float): The number of pixels to expand the box in all directions.
-            Returns:
-                numpy.ndarray: An array of shape (4, 1, 2) containing the integer coordinates of the expanded box corners.        
+        Expands a given quadrilateral box by a specified number of pixels in all directions.
+        This function calculates the minimum area rotated rectangle that encloses the input box,
+        expands its width and height by `2 * expand_pixels`, and returns the coordinates of the
+        expanded rectangle as a polygon.
+        Args:
+            box (array-like): An array of shape (4, 2) representing the four corner points of the box.
+            expand_pixels (int or float): The number of pixels to expand the box in all directions.
+        Returns:
+            numpy.ndarray: An array of shape (4, 1, 2) containing the integer coordinates of the expanded box corners.
         """
         # Bước 1: Tính rotated rectangle (minAreaRect)
         rect = cv2.minAreaRect(box)  # rect = ((cx, cy), (w, h), angle)
@@ -614,57 +650,78 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         return box_points
 
     @Slot(object)
-    def update_stream_camera(self, data : list[np.ndarray | int] | tuple[np.ndarray,int,bool,list[int]]):
+    def update_stream_camera(
+        self, data: list[np.ndarray | int] | tuple[np.ndarray, int, bool, list[int]]
+    ):
         # if not self.is_auto_process:
         if len(data) == 2:
             self.ok_frame_count = 0
             # self.is_abnormal = True
             display_image, fps = data
             self.ui_status_label.setStyleSheet(
-                    system_config_params.normal_status_label_style
-                )
-            
+                system_config_params.normal_status_label_style
+            )
+
             if self.is_abnormal is None:
-                self.ui_status_label.setText(system_config_params.normal_status_label_text)
+                self.ui_status_label.setText(
+                    system_config_params.normal_status_label_text
+                )
                 self.ui_status_label.setStyleSheet(
                     system_config_params.normal_status_label_style
                 )
 
         else:
-            display_image, fps , is_abnormal ,original_box = data
+            display_image, fps, is_abnormal, original_box = data
             if detect_lcd_params.is_need_scan_sn_first:
                 if original_box is not None and self.input_mac_value == "":
                     # self.set_system_message(f"{sfc_request_params.scan_sn_first_message}", 'red')
-                    self.ui_status_label.setText('SN???')
+                    self.ui_status_label.setText("SN???")
                     self.ui_status_label.setStyleSheet(
-                    system_config_params.ng_status_label_style
+                        system_config_params.ng_status_label_style
                     )
                     # self.set_background_label(self.ui_label_display_video, display_image)
                     self.ui_label_display_video.setImage(display_image)
                     return
             if not is_abnormal:
                 self.ok_frame_count += 1
-                if self.ok_frame_count >= abnormal_inference_params.frame_count_threashold_ok:
+                if (
+                    self.ok_frame_count
+                    >= abnormal_inference_params.frame_count_threashold_ok
+                ):
                     self.is_abnormal = False
                     self.ok_frame_count = 0
             else:
                 self.ok_frame_count = 0
                 self.is_abnormal = True
-                
+
             if self.is_abnormal and original_box is not None:
-                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ng_color, 2, cv2.LINE_AA) # type: ignore
+                display_image = cv2.polylines(
+                    display_image, # type: ignore
+                    [original_box], # type: ignore
+                    True,
+                    abnormal_inference_params.ng_color,
+                    2,
+                    cv2.LINE_AA,
+                )  # type: ignore
             elif not self.is_abnormal and original_box is not None:
-                display_image = cv2.polylines(display_image, [original_box], True, abnormal_inference_params.ok_color, 2, cv2.LINE_AA) # type: ignore
+                display_image = cv2.polylines(
+                    display_image, # type: ignore
+                    [original_box], # type: ignore
+                    True,
+                    abnormal_inference_params.ok_color,
+                    2,
+                    cv2.LINE_AA,
+                )  # type: ignore
 
             cv2.putText(
-                display_image, # type: ignore
+                display_image,  # type: ignore
                 f"FPS: {fps:.1f}",
                 (10, 30),
                 fontFace=cv2.FONT_HERSHEY_SIMPLEX,
                 fontScale=1,
                 color=(0, 255, 0),
                 thickness=2,
-            ) # type: ignore
+            )  # type: ignore
 
             if display_image is not None:
                 self.current_processing_image = display_image.copy()  # type: ignore # Lưu ảnh hiện tại để xử lý sau
@@ -683,20 +740,25 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         # self.set_background_label(self.ui_label_display_video, display_image)
         self.ui_label_display_video.setImage(display_image)
 
-    def set_system_message(self, text : str, color : Literal['red','green'] ="red") -> None:
+    def set_system_message(
+        self, text: str, color: Literal["red", "green"] = "red"
+    ) -> None:
         self.ui_system_message_label.setText(text)
         self.ui_system_message_label.setStyleSheet(
             f"background-color: {color}; font-weight: bold; color: white"
         )
-    
+
     def validator_mac_input(self, mac_value: str) -> bool:
-        return mac_value.startswith(
-            product_config_params.mac_start_with
-        )  
-    
+        return mac_value.startswith(product_config_params.mac_start_with)
+
     def handle_mac_input_changed(self, new_text: str) -> None:
         min_len = product_config_params.mac_min_len
-        if len(new_text) >= min_len and not self.is_calling_sfc and self.is_running_stream and self.is_auto_process:
+        if (
+            len(new_text) >= min_len
+            and not self.is_calling_sfc
+            and self.is_running_stream
+            and self.is_auto_process
+        ):
             is_valid_mac = self.validator_mac_input(new_text[0:min_len])
             if is_valid_mac:
                 self.input_mac_value = new_text[0:min_len]
@@ -705,14 +767,14 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                     sfc_request_params.notify_text_valid_sn, color="green"
                 )
                 self.start_operation = time.time()
-                operation_history_log.info(f'Scan SN: {self.input_mac_value} - PASS')
-                
+                operation_history_log.info(f"Scan SN: {self.input_mac_value} - PASS")
+
                 return
             if self.input_mac_value == "":
                 self.set_system_message(
                     sfc_request_params.notify_text_invalid_sn, color="red"
                 )
-                operation_history_log.warning(f'SN scan failed: {self.input_mac_value}')
+                operation_history_log.warning(f"SN scan failed: {self.input_mac_value}")
                 self.ui_mac_input.setText("")
             else:
                 if len(new_text) >= product_config_params.tray_min_len:
@@ -720,7 +782,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                         self.set_system_message(
                             sfc_request_params.notify_text_valid_tray, color="green"
                         )
-                        operation_history_log.info(f'SN: {self.input_mac_value} - scan TRAY PASS')
+                        operation_history_log.info(
+                            f"SN: {self.input_mac_value} - scan TRAY PASS"
+                        )
                         self.input_tray_value = new_text[
                             0 : product_config_params.tray_min_len
                         ]
@@ -735,13 +799,15 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                         # self.is_calling_sfc = True
                         self.send_sfc_request(data_sfc)
                     else:
-                        operation_history_log.info(f'SN: {self.input_mac_value} - scan TRAY failed - dusting')
+                        operation_history_log.info(
+                            f"SN: {self.input_mac_value} - scan TRAY failed - dusting"
+                        )
                         self.set_system_message(
                             sfc_request_params.notify_text_still_dusty, "red"
                         )
                     self.ui_mac_input.setText("")
 
-    def send_sfc_request(self, data : dict) -> None:
+    def send_sfc_request(self, data: dict) -> None:
         if self.is_calling_sfc:
             return  # tránh xử lý đồng thời
 
@@ -765,7 +831,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         except Exception as e:
             console_logger.error(f"Failed when create sfc request thread: {e}")
 
-    def handle_sfc_result(self, sfc_response : dict) -> None:
+    def handle_sfc_result(self, sfc_response: dict) -> None:
         self.is_calling_sfc = False
         if sfc_response is not None:
             try:
@@ -777,7 +843,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                     operation_history_log.info(f"SFC Falied: {sfc_response}\n\n")
                     raise ValueError("cannot call SFC")
                 if (
-                    sfc_response[sfc_request_params.sfc_response_key1][sfc_request_params.sfc_response_key2]
+                    sfc_response[sfc_request_params.sfc_response_key1][
+                        sfc_request_params.sfc_response_key2
+                    ]
                     == sfc_request_params.SFC_Response_status
                 ):
                     try:
@@ -785,29 +853,35 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
                         self.sum_ok_products += 1
                         product_config_params.sum_ok_products += 1
                         product_config_params.save_to_config_file()
-                        self.ui_sum_ok_label.setText(
-                            f"N OK: {self.sum_ok_products}"
-                        )
+                        self.ui_sum_ok_label.setText(f"N OK: {self.sum_ok_products}")
                         self.set_system_message(
                             sfc_request_params.notify_text_passed_product, color="green"
                         )
-                        self.save_pass_image(self.current_processing_image, self.input_mac_value)
+                        self.save_pass_image(
+                            self.current_processing_image, self.input_mac_value
+                        )
                         self.end_operation = time.time()
                         self.cycle_time = self.end_operation - self.start_operation
                         self.cycle_time_list.append(self.cycle_time)
-                        operation_history_log.info(f"Save image successfully - MAC: {self.input_mac_value} - PASS\nCycle time: {self.cycle_time}\n\n")
+                        operation_history_log.info(
+                            f"Save image successfully - MAC: {self.input_mac_value} - PASS\nCycle time: {self.cycle_time}\n\n"
+                        )
                         self.write_log_to_excel(self.input_mac_value)
 
                     except Exception as e:
                         console_logger.error(f"Error : {e}")
-                        operation_history_log.info(f"SFC Falied: {self.input_mac_value} - Mess: {e}\n\n")
+                        operation_history_log.info(
+                            f"SFC Falied: {self.input_mac_value} - Mess: {e}\n\n"
+                        )
                 else:
                     console_logger.debug(f"SFC response: {sfc_response}")
                     self.set_system_message(
                         f"Command1: {sfc_response[sfc_request_params.sfc_response_key1][sfc_request_params.sfc_response_key3]}",
-                        color="red",   
+                        color="red",
                     )
-                    operation_history_log.info(f"SFC failed: {self.input_mac_value} \n\n ")
+                    operation_history_log.info(
+                        f"SFC failed: {self.input_mac_value} \n\n "
+                    )
             except (KeyError, ValueError, TypeError) as e:
                 self.set_system_message(
                     f"{sfc_request_params.notify_text_sfc_failed_request}: {str(e)}",
@@ -816,25 +890,25 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             finally:
                 self.input_mac_value = ""
                 self.input_tray_value = ""
-        
+
     def request_sfc(
         self,
-        url : str =sfc_request_params.end_point,
-        method : str =sfc_request_params.method,
-        data : None | dict = None,
-        headers : dict = sfc_request_params.headers,
+        url: str = sfc_request_params.end_point,
+        method: str = sfc_request_params.method,
+        data: None | dict = None,
+        headers: dict = sfc_request_params.headers,
     ) -> dict | str:
         self.sfc_failed = True
         try:
             if method == "GET":
-                operation_history_log.info(f'Request SFC data: {data}')
+                operation_history_log.info(f"Request SFC data: {data}")
                 response = requests.get(url, headers=headers)
 
             elif method == "POST":
-                operation_history_log.info(f'Request SFC data: {data}')
+                operation_history_log.info(f"Request SFC data: {data}")
                 response = requests.post(url, json=data, headers=headers)
 
-            operation_history_log.info(f'SFC response: {response.json()}') 
+            operation_history_log.info(f"SFC response: {response.json()}")
             if response.status_code == 200:
                 return response.json()
             else:
@@ -845,16 +919,18 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             res = f"Lỗi khi gọi API: {e}"
             return res
 
-    def write_log_to_excel(self,log_text: str, log_dir: str = sfc_request_params.default_dir_log_sn_pass) -> None:
+    def write_log_to_excel(
+        self, log_text: str, log_dir: str = sfc_request_params.default_dir_log_sn_pass
+    ) -> None:
         # Đảm bảo thư mục log tồn tại
         os.makedirs(log_dir, exist_ok=True)
 
         # Tạo tên file dạng dd-mm-yyyy.xlsx
-        file_name = datetime.now().strftime('%d-%m-%Y') + '.xlsx'
+        file_name = datetime.now().strftime("%d-%m-%Y") + ".xlsx"
         file_path = os.path.join(log_dir, file_name)
 
         # Lấy thời gian hiện tại (hh:mm:ss)
-        current_time = datetime.now().strftime('%H:%M:%S')
+        current_time = datetime.now().strftime("%H:%M:%S")
 
         # Nếu file đã tồn tại, mở và ghi tiếp, ngược lại tạo mới
         if os.path.exists(file_path):
@@ -863,17 +939,17 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         else:
             wb = Workbook()
             ws = wb.active
-            ws.append(['Scan Time', 'SN',"Cycle time"])  # type: ignore # Tiêu đề cột
+            ws.append(["Scan Time", "SN", "Cycle time"])  # type: ignore # Tiêu đề cột
 
         # Ghi thêm dòng log
-        ws.append([current_time, log_text,self.cycle_time]) # type: ignore
+        ws.append([current_time, log_text, self.cycle_time])  # type: ignore
         wb.save(file_path)
 
     def save_pass_image(
         self,
-        image : np.ndarray | None,
-        text : str,
-        base_dir : str =sfc_request_params.default_dir_log_image
+        image: np.ndarray | None,
+        text: str,
+        base_dir: str = sfc_request_params.default_dir_log_image,
     ) -> None:
         # Lấy thời gian hiện tại
         if image is None:
@@ -939,7 +1015,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
         # Lưu ảnh
         cv2.imwrite(filename, img)
-        console_logger.info(f'Save image {filename} successfully')
+        console_logger.info(f"Save image {filename} successfully")
         print(f"✅ Ảnh đã lưu: {filename}")
 
     def closeEvent(self, event) -> None:
@@ -953,7 +1029,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
         operation_history_log.info("Close application\n")
         print("Closing application...")
-        
+
 
 if __name__ == "__main__":
     app = QApplication([])

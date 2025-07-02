@@ -34,7 +34,7 @@ Abnormal_Train:
 Abnormal_Inference:
   model_path: models\openvino_512_20.05_My_Crop\model.xml
   inference_type: Openvino
-  heat_map_NG_thresh_hold: 0.14
+  heat_map_NG_thresh_hold: 0.5
   heat_map_display_alpha: 0.5
   max_ratio_w_h_cnt: 3
   brightness_threshold_caculate_dust_size: 0.9
