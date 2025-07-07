@@ -6,11 +6,10 @@ from openpyxl import Workbook, load_workbook
 import numpy as np
 from typing import Callable, Literal
 import os
-
-# import sys
-# sys.path.insert(0,os.path.abspath(os.path.join(os.path.dirname(__file__),"..","..")))
+import sys
+sys.path.insert(0,os.path.join(os.path.abspath(os.path.dirname(__file__)),"..",".."))
 from src.modules.AnomalyDetection import AnomalyDetection
-from src.modules.utils import (
+from src.modules.Utils import (
     quick_stability_check,
     calculate_focus_score,
     get_resource_path,
@@ -48,11 +47,8 @@ from src.global_params import (
     system_config_params,
 )
 
-# sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-# from views.main_window  import Ui_MainWindow  # tên class tuỳ thuộc file ui của bạn
 from src.views.main_window import Ui_MainWindow
-from src.modules.loggers import console_logger, operation_history_log
-
+from src.modules.Loggers import console_logger, operation_history_log
 
 class StreamVideoWorker(QObject):
     emit_frame_signal = Signal(object)
@@ -79,6 +75,15 @@ class StreamVideoWorker(QObject):
             console_logger.error("Abnormal processing is None")
 
     def rotate_image(self, image: np.ndarray, angle: float) -> np.ndarray:
+        """
+        Rotates an image by a specified angle around its center.
+        Args:
+            image (np.ndarray): The input image to be rotated.
+            angle (float): The angle (in degrees) to rotate the image. Positive values mean counter-clockwise rotation.
+        Returns:
+            np.ndarray: The rotated image with the same dimensions as the input.
+        """
+        
         (h, w) = image.shape[:2]
         center = (w // 2, h // 2)  # Tâm xoay là trung tâm ảnh
 
@@ -90,6 +95,18 @@ class StreamVideoWorker(QObject):
         return rotated
 
     def init_video_capture(self) -> None:
+        """
+        Initializes the video capture device with the specified camera configuration parameters.
+        This method releases any previously opened video capture device, then attempts to open a new
+        video capture using the source and settings defined in `camera_config_params`. It supports
+        both DirectShow and default capture backends, and can enable MJPG format if specified.
+        Camera properties such as brightness, contrast, saturation, sharpness, gain, resolution,
+        auto exposure, and exposure are set according to the configuration.
+        Logs warnings and errors if the capture device cannot be released or opened.
+        Raises:
+            Logs exceptions encountered during the initialization process.
+        """
+        
         if self.cap is not None:
             console_logger.warning("current cap is not None")
             while self.cap is not None and self.cap.isOpened():
@@ -137,11 +154,40 @@ class StreamVideoWorker(QObject):
             # 0.25 = Manual mode for some cameras
             if isinstance(camera_config_params.prop_exposure, int):
                 self.cap.set(cv2.CAP_PROP_EXPOSURE, camera_config_params.prop_exposure)
+                
+            print("Contrast:", self.cap.get(cv2.CAP_PROP_CONTRAST))
+            print("Saturation:", self.cap.get(cv2.CAP_PROP_SATURATION))
+            print("Sharpness:", self.cap.get(cv2.CAP_PROP_SHARPNESS))  # Không phải camera nào cũng hỗ trợ
+            print("Gain:", self.cap.get(cv2.CAP_PROP_GAIN))
         except Exception as e:
             console_logger.error(f"Cannot open video capture: {e}\n")
             operation_history_log.error(f"Cannot open video capture: {e}\n")
 
     def start_stream_video(self) -> None:
+        """
+        Starts the video streaming process, capturing frames from the configured video source,
+        processing them according to the current application state, and emitting signals with
+        the processed frames and calculated FPS.
+        The method performs the following steps:
+        - Initializes frame count and running state.
+        - Continuously reads frames from the video capture device while streaming is active.
+        - Handles dynamic changes in video source and reinitializes capture if needed.
+        - Applies rotation and resizing to frames based on camera configuration parameters.
+        - Calculates the frames per second (FPS) for each frame.
+        - Depending on the parent controller's state:
+            - If not in auto-process mode, optionally calculates and draws the focus score,
+              and emits the frame signal.
+            - If in auto-process mode, optionally checks frame stability, performs abnormal
+              detection (e.g., dust detection), and emits the appropriate frame signal with
+              additional data such as heatmaps, segmentation, or abnormality status.
+        - Releases the video capture resource and emits a finished signal when streaming ends.
+        Emits:
+            emit_frame_signal: Signal with processed frame data and FPS (and optionally abnormality info).
+            finished_signal: Signal emitted when streaming is finished.
+        Note:
+            This method is intended to be run in a separate thread or process to avoid blocking the UI.
+        """
+        
         self.count_fr = 0
         self.is_running = True
         # self.init_video_capture()
@@ -242,6 +288,14 @@ class StreamVideoWorker(QObject):
         self.finished_signal.emit()
 
     def stop(self) -> None:
+        """
+        Stops the camera capture process, releases the video capture resource if it is open,
+        emits a finished signal, and closes any OpenCV windows.
+        This method sets the running flag to False, emits a signal indicating that the process
+        has finished, and ensures that the video capture object (`self.cap`) is properly released.
+        It also destroys all OpenCV windows and logs the successful release of the camera resource.
+        """
+        
         self.is_running = False
         self.finished_signal.emit()
         if self.cap is not None:
@@ -251,7 +305,6 @@ class StreamVideoWorker(QObject):
                 self.cap = None
                 cv2.destroyAllWindows()
             console_logger.info("Stop camera successfully, release cap done!")
-
 
 # # project
 class SFCWorker(QObject):
@@ -265,6 +318,16 @@ class SFCWorker(QObject):
 
     @Slot(dict)
     def run(self, data: dict) -> None:
+        """
+        Executes the main process by sending a request with the provided data and emitting the response.
+        Args:
+            data (dict): The data to be sent in the request.
+        Emits:
+            sent_request_data: Signal emitted with the response from the request.
+        Logs:
+            Logs the request data and any exceptions that occur during the request process.
+        """
+        
         try:
             console_logger.debug(f"Request data: {data}")
             # đây là hàm gọi API
@@ -273,7 +336,6 @@ class SFCWorker(QObject):
 
         except Exception as e:
             console_logger.debug("failed exception request SFC: ", e)
-
 
 class MainWindowController(QMainWindow, Ui_MainWindow):
     send_data_signal: Signal = Signal(dict)
@@ -289,6 +351,22 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         operation_history_log.info("Open application\n")
 
     def init_variables(self) -> None:
+        """
+        Initializes and resets instance variables related to the main window controller's state.
+        This method sets up default values for system status, UI controls, process flags, 
+        product counters, and threading objects. It also configures the initial state of 
+        various UI elements based on current configuration parameters and input values.
+        Variables initialized include:
+            - System and process status flags (e.g., is_abnormal, is_running_stream)
+            - Image and MAC address input fields
+            - Debug and auto-process flags from configuration
+            - Product OK/NG counters from configuration
+            - UI control states (enabled/disabled, checked/unchecked)
+            - Video streaming worker and thread placeholders
+            - Operation timing and cycle time tracking
+        No arguments or return values.
+        """
+        
         # system
         self.ok_frame_count = 0  # count abnormal frame to decided NG or OK
         self.status_result = None  # status result of process
@@ -328,8 +406,22 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
     def mock_funtions_base(self) -> None:
         """
-        Hàm gắn các function cho các phần tử UI của giao diện dùng chung cho các dự án
+        Sets up mock functions and connects UI elements to their respective event handlers.
+        This method initializes various UI event handlers for debugging, image processing, 
+        camera streaming, configuration management, and input focus. It includes:
+            - Processing a single image using the dust detection algorithm and displaying the result.
+            - Changing the debug state and updating the logger level.
+            - Starting and stopping the camera stream.
+            - Opening an image file and updating the UI accordingly.
+            - Saving all configuration settings.
+            - Handling changes to the auto-process state.
+            - Handling changes to the MAC input field.
+            - Opening the configuration file.
+            - Setting focus to the MAC input field at regular intervals.
+        Raises:
+            Exception: If an error occurs during image processing, a message box is displayed with the error message.
         """
+        
 
         def process_one_image():
             try:
@@ -414,7 +506,13 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.focus_timer.start()
 
     def update_process_type_mode(self) -> None:
-        """Hàm update UI của processtype"""
+        """Updates the visual style of process type labels based on the current processing mode.
+        If `self.image_need_process` is an empty string, highlights the camera process type label
+        and resets the image process type label's style. Otherwise, highlights the image process type
+        label and resets the camera process type label's style.
+        This method is typically used to provide visual feedback to the user about the current
+        process type selection in the UI."""
+        
         style = """
             background-color: #a9dfbf;
             color: black;
@@ -431,7 +529,18 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             self.ui_proces_type_camera_label.setStyleSheet("")
 
     def init_style_sheet(self) -> None:
-        """Khởi tạo style cho các phần tử giao diện"""
+        """
+        Initializes and applies the style sheet and UI resources for the main window.
+        This method performs the following actions:
+            - Updates the process type mode.
+            - Sets a custom style sheet for the 'Open Config File' button, including hover effects.
+            - Sets background images for specific labels using provided resource paths.
+            - Sets the display image for the video label asynchronously.
+            - Configures icons and icon sizes for the 'Start Camera' and 'Stop Camera' buttons.
+        Returns:
+            None
+        """
+        
         self.update_process_type_mode()
         self.ui_open_config_file_btn.setStyleSheet("""
                                                    
@@ -479,7 +588,14 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_stop_camera_btn.setIconSize(QSize(27, 27))
 
     def on_stream_thread_finished(self) -> None:
-        """Chạy sau khi thread dừng hẳn"""
+        """
+        Handles UI updates when the stream thread has finished.
+        This method resets and updates various UI components to their default or inactive states,
+        including enabling/disabling buttons, clearing input fields, updating status and system
+        messages, and setting default images and styles. It is typically called when a background
+        streaming operation completes, ensuring the UI reflects the idle or ready state.
+        """
+        
         self.ui_open_image_btn.setDisabled(False)
         self.ui_auto_process_check_box.setEnabled(False)
         self.ui_mac_input.setEnabled(False)
@@ -502,7 +618,16 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_status_label.setText(system_config_params.normal_status_label_text)
 
     def init_thread_stream_video(self) -> None:
-        """Khởi tạo thread để đọc luồng video và emit về giao diện chính"""
+        """
+        Initializes and starts a new QThread for streaming video.
+        This method creates a new QThread and a StreamVideoWorker instance, moves the worker to the thread,
+        and connects the necessary signals and slots for video streaming and thread management. If a stream
+        thread is already running, it stops the current thread before starting a new one. Handles exceptions
+        and logs relevant information.
+        Raises:
+            Exception: If initialization of the stream video thread fails.
+        """
+        
         if self.stream_video_thread is not None:
             console_logger.warning("Current stream thread is not None")
             self.stop_current_thread()
@@ -538,7 +663,17 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             console_logger.error(f"Failed when init stream video thread: {e}")
 
     def stop_current_thread(self) -> None:
-        """Dừng stream hiện tại một cách an toàn"""
+        """
+        Stops the currently running video streaming thread safely.
+        This method attempts to stop the associated worker if it exists,
+        waits for the thread to finish within a timeout (5 seconds),
+        and forcefully terminates the thread if it does not stop in time.
+        Logs appropriate messages for successful or unsuccessful termination.
+        Resets the thread and worker references to None after stopping.
+        Raises:
+            RuntimeError: If an error occurs while stopping the thread.
+        """
+        
         if self.stream_video_thread is not None:
             try:
                 if self.stream_video_worker is not None:
@@ -559,6 +694,16 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             print(1)
 
     def start_stream(self) -> None:
+        """
+        Starts the camera stream and updates the UI accordingly.
+        This method performs the following actions:
+            - Clears the image to be processed.
+            - Disables the 'Start Camera' button to prevent multiple starts.
+            - Logs the start of the camera operation.
+            - Sets the internal flag indicating the stream is running.
+            - Enables or disables relevant UI elements for camera operation.
+        """
+        
         # check if is exist stream camera thread
         self.image_need_process = ""
         self.ui_start_camera_btn.setDisabled(True)
@@ -587,16 +732,20 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_open_image_btn.setDisabled(False)
         # self.stop_current_thread()
 
-    def set_background_label(
-        self, label: QLabel, cv_image: np.ndarray | str | None
-    ) -> None:
+    def set_background_label(self, label: QLabel, cv_image: np.ndarray | str | None) -> None:
         """
-        Hiển thị ảnh OpenCV lên QLabel.
-
-        :param label: QLabel cần gán ảnh
-        :param cv_image: Ảnh dạng ndarray (BGR format từ OpenCV)
+        Sets the background image of a QLabel widget using an OpenCV image or image file path.
+        This method converts the provided image (either as a NumPy array or a file path) to RGB format,
+        resizes it to fit the QLabel while maintaining aspect ratio, and sets it as the label's pixmap.
+        If `cv_image` is None, the method does nothing.
+        Args:
+            label (QLabel): The QLabel widget to set the background image for.
+            cv_image (np.ndarray | str | None): The image to display. Can be a NumPy array (OpenCV image),
+                a file path to an image, or None.
+        Returns:
+            None
         """
-
+        
         if cv_image is None:
             return
         if isinstance(cv_image, str):
@@ -651,8 +800,35 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
     @Slot(object)
     def update_stream_camera(
-        self, data: list[np.ndarray | int] | tuple[np.ndarray, int, bool, list[int]]
+        self,
+        data: list[np.ndarray | int] | tuple[np.ndarray, int, bool, list[int]]
     ):
+        
+        """
+        Updates the stream camera display and UI status based on the provided data.
+        This method processes incoming frame data from the camera, updates the display image,
+        manages abnormal/normal status detection, and updates UI labels and styles accordingly.
+        Args:
+            data (list[np.ndarray | int] | tuple[np.ndarray, int, bool, list[int]]):
+                - If length is 2: [display_image, fps]
+                    - display_image (np.ndarray): The image frame to display.
+                    - fps (int): Frames per second value.
+                - If length is 4: [display_image, fps, is_abnormal, original_box]
+                    - display_image (np.ndarray): The image frame to display.
+                    - fps (int): Frames per second value.
+                    - is_abnormal (bool): Whether the current frame is considered abnormal.
+                    - original_box (list[int]): Coordinates for drawing a bounding box.
+        Side Effects:
+            - Updates the UI status label's text and style based on the detection result.
+            - Draws bounding boxes and FPS text on the display image.
+            - Updates the displayed image in the UI.
+            - Maintains internal state for abnormal/normal frame counting.
+        Note:
+            This method assumes the existence of several instance attributes and external
+            configuration parameters, such as `self.ui_status_label`, `self.ui_label_display_video`,
+            `system_config_params`, `abnormal_inference_params`, and `detect_lcd_params`.
+        """
+        
         # if not self.is_auto_process:
         if len(data) == 2:
             self.ok_frame_count = 0
@@ -741,7 +917,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_label_display_video.setImage(display_image)
 
     def set_system_message(
-        self, text: str, color: Literal["red", "green"] = "red"
+        self,
+        text: str,
+        color: Literal["red", "green"] = "red"
     ) -> None:
         self.ui_system_message_label.setText(text)
         self.ui_system_message_label.setStyleSheet(
@@ -1029,7 +1207,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
 
         operation_history_log.info("Close application\n")
         print("Closing application...")
-
 
 if __name__ == "__main__":
     app = QApplication([])

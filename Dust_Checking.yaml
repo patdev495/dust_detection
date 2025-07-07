@@ -4,7 +4,7 @@ Detect_LCD:
   kernel_blur_size:
   - 5
   - 5
-  kernel_size: 7
+  kernel_size: 11
   expand_crop_bot: 0
   expand_crop_left: 0
   expand_crop_right: 0
@@ -14,7 +14,7 @@ Detect_LCD:
   max_LCD_w_h_ratio: 0.9
   is_need_check_stable_frames: true
   is_need_scan_sn_first: false
-  motion_score_threshold: 3
+  motion_score_threshold: 4
   required_stable_frames: 4
   resize_shape_caculate_stablity:
   - 80
@@ -34,9 +34,9 @@ Abnormal_Train:
 Abnormal_Inference:
   model_path: models\openvino_512_20.05_My_Crop\model.xml
   inference_type: Openvino
-  heat_map_NG_thresh_hold: 0.5
-  heat_map_display_alpha: 0.5
-  max_ratio_w_h_cnt: 3
+  heat_map_NG_thresh_hold: 0.12
+  heat_map_display_alpha: 0.7
+  max_ratio_w_h_cnt: 10
   brightness_threshold_caculate_dust_size: 0.9
   ng_color:
   - 0
@@ -54,30 +54,36 @@ Abnormal_Inference:
   is_need_show_abnormal_score: true
   src_video: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
 Camera_Config:
+  instructions:
+  - 'camera reoslution: [1080,1920] - fullHD or [2160,3840] - 4k'
+  - 'auto_exposure: 0.25 - manual or 0.75 - auto'
+  - 'prop_exposure: the closer the value is to 0, the brighter it is'
+  - 'cap_type_dshow: true - live camera or false - video test '
+  - 'zoom_in_factor: zoom ratio'
   camera_source: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
   camera_resolution:
-  - 1080
-  - 1920
+  - 2160
+  - 3840
+  enable_mjpg_format: false
+  is_need_resize_frame: true
+  resize_resolution:
+  - 1382
+  - 2400
   auto_exposure: 0.25
-  prop_exposure: -5
+  prop_exposure: -6
   sensor_size:
   - 6.4
   - 4.8
-  is_need_rotate_camera: false
+  is_need_rotate_camera: true
   rotate_angle: 180
   manual_setting: true
   brightness: 65
-  contrast: 45
-  saturation: 60
-  sharpness: 65
-  zoom_in_factor: 1.05
+  contrast: 80
+  saturation: 40
+  sharpness: 90
+  gain: 0
   cap_type_dshow: false
-  is_need_resize_frame: false
-  resize_resolution:
-  - 1620
-  - 2880
-  enable_mjpg_format: false
-  gain: 30
+  zoom_in_factor: 1.05
 System_Config:
   log_dir: logs
   debug: false

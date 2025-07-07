@@ -1,6 +1,9 @@
 import cv2
 import numpy as np
+import sys
+import os
 from anomalib.data import Folder
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__),"..","..")))
 from anomalib.deploy import OpenVINOInferencer
 from anomalib.engine import Engine
 from anomalib.models import EfficientAd, Padim, Patchcore
@@ -8,16 +11,18 @@ from anomalib.post_processing import PostProcessor
 from anomalib.pre_processing import PreProcessor
 from anomalib.utils.visualization import ImageResult
 from torchvision.transforms.v2 import Compose, Resize
-from src.modules.utils import get_resource_path
-from src.global_params import detect_lcd_params,abnormal_inference_params,abnormal_train_params,system_config_params,camera_config_params
+from src.modules.Utils import get_resource_path
+from src.global_params import detect_lcd_params,abnormal_inference_params,abnormal_train_params,camera_config_params
 import logging
-from typing import Union,Optional,Callable,TypedDict
-from src.modules.typed import CCDResult
+from typing import Union,Optional
+from src.modules.Typed import CCDResult
+from src.modules.ImageProcessing import ImageProcessor
 
 logger = logging.getLogger('app')
 
-class AnomalyDetection:
+class AnomalyDetection(ImageProcessor):
     def __init__(self) -> None:
+        # self.image_processor = ImageProcessor()
         self.is_detected_CCD  = False
         self.is_abnormal  = True
         self.result_color  = (0,0,255)
@@ -26,210 +31,7 @@ class AnomalyDetection:
 
         self.pixel_width = camera_config_params.sensor_size[0] /  3840 * 1000
         self.pixel_height = camera_config_params.sensor_size[1] /  2160 * 1000
-    def adaptive_image_to_binary(self, img : np.ndarray | None) -> np.ndarray | None:
-        """
-        Converts a BGR image to a binary image using adaptive thresholding.
-            This method first converts the input image to grayscale, applies Gaussian blur to reduce noise,
-            and then performs adaptive thresholding to produce a binary image. The parameters for blurring
-            and thresholding are taken from the `detect_lcd_params` configuration.
-            Args:
-                img (np.ndarray): Input image in BGR format.
-            Returns:
-                np.ndarray: Binary image resulting from adaptive thresholding.
-        """   
-        if img is None:
-            return None
-        gray_image = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-
-        # Làm mờ để giảm nhiễu (rất quan trọng trước adaptive)
-        blurred_image = cv2.GaussianBlur(gray_image, tuple(detect_lcd_params.kernel_blur_size), 0)
-
-        binary_image = cv2.adaptiveThreshold(
-            blurred_image,
-            maxValue=255,
-            adaptiveMethod=cv2.ADAPTIVE_THRESH_MEAN_C,  # hoặc ADAPTIVE_THRESH_MEAN_C,ADAPTIVE_THRESH_GAUSSIAN_C  
-            thresholdType=cv2.THRESH_BINARY,
-            blockSize=detect_lcd_params.block_size,   # Kích thước vùng xung quanh (nên là số lẻ)
-            C=detect_lcd_params.C    # Giá trị trừ sau khi tính trung bình, giúp cân chỉnh độ nhạy
-        )
-
-        return binary_image
-
-    def border_gaps_binary_image(self, binary_img : np.ndarray | None) -> np.ndarray | None:
-        """
-        Repairs border gaps in a binary image by performing morphological closing.
-        This method inverts the input binary image, applies morphological closing to connect
-        broken borders (gaps) using a rectangular kernel, and then inverts the image back to
-        its original polarity. The result is a binary image with repaired border gaps.
-        Args:
-            binary_img (np.ndarray | None): Input binary image. Should be a single-channel
-                image where foreground and background are represented by 0 and 255 values.
-                If None, the function returns None.
-        Returns:
-            np.ndarray | None: The binary image with repaired border gaps, or None if the
-                input is None.
-        """
-        
-        # 1. Đảo ảnh: vùng đen thành trắng, vùng trắng thành đen
-        if binary_img is None:
-            return None
-        inverted = cv2.bitwise_not(binary_img)
-
-        # 2. Morph closing để nối vùng trắng (tức là nối lại viền đen trong ảnh gốc)
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (detect_lcd_params.kernel_size, detect_lcd_params.kernel_size))
-        closed = cv2.morphologyEx(inverted, cv2.MORPH_CLOSE, kernel)
-
-        # 3. Đảo lại ảnh: vùng trắng thành đen, vùng đen thành trắng
-        repaired = cv2.bitwise_not(closed)
-        
-        return repaired
     
-    def get_top_left_point_box(self, box : np.ndarray):
-        """
-        Finds and returns the top-left point of a bounding box.
-        Given a 2D array representing the coordinates of the corners of a box,
-        this function identifies the point with the smallest sum of x and y coordinates,
-        which corresponds to the top-left corner.
-        Args:
-            box (np.ndarray): A (4, 2) array of box corner coordinates.
-        Returns:
-            tuple: The (x, y) coordinates of the top-left point as integers.
-        """
-        
-        box = np.array(box, dtype="float32")
-
-        # Tính tổng x + y => top-left sẽ có tổng nhỏ nhất
-        s = box.sum(axis=1)
-        top_left = box[np.argmin(s)]
-
-        return tuple(map(int, top_left))
-    #nếu detect ra thì self.is_detected_LCD = True
-    def detect_ccd(self, img : Union[str,np.ndarray]) -> CCDResult | None:
-        self.is_detected_CCD = False
-        if isinstance(img, str):
-            img = cv2.imread(img)
-        if img is None:
-            logger.warning("Cannot detect LCD: Image is None or not loaded properly.")
-            return None
-        
-        original_img = img.copy()
-        #preprocessing
-        binary_image = self.adaptive_image_to_binary(img)
-        binary_image = self.border_gaps_binary_image(binary_image)
-        
-        #get area of interest
-        h_image, w_image = img.shape[:2]
-        center = (w_image // 2, h_image // 2)
-        total_area = w_image * h_image
-        
-        # load area thresholds
-        min_valid_area = total_area * detect_lcd_params.min_LCD_area_ratio
-        max_valid_area = total_area * detect_lcd_params.max_LCD_area_ratio
-
-        # find contours
-        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # type: ignore
-        if not contours:
-            return None
-        
-        contours = sorted(contours, key=cv2.contourArea, reverse=True)
-        best_contour = None
-        smallest_area = float('inf')
-
-        for contour in contours:
-            (cx, cy), (cw, ch), angle = cv2.minAreaRect(contour)
-            if max(cw,ch) >= detect_lcd_params.max_LCD_w_h_ratio * w_image or min(cw,ch) >= detect_lcd_params.max_LCD_w_h_ratio * h_image:
-                continue  # Loại bỏ contour quá lớn so với ảnh
-            area = cv2.contourArea(contour)
-            
-            # Early termination if area too small
-            if area < min_valid_area:
-                break
-            if area > max_valid_area:
-                continue
-            
-            if area < smallest_area:
-                smallest_area = area
-                best_contour = contour
-
-        if best_contour is None:
-            logger.debug("No valid contour found within area thresholds.")
-            return None
-        
-        rect = cv2.minAreaRect(best_contour)
-        (cx, cy), (cw, ch), angle = rect
-
-        if cw < ch:
-            angle -= 90
-        
-        # Get box coordinates
-        box = np.int32(cv2.boxPoints(rect))
-
-        rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
-        rotated_image = cv2.warpAffine(
-            img, rotation_matrix, (w_image, h_image),
-            flags=cv2.INTER_CUBIC, 
-            borderMode=cv2.BORDER_REPLICATE
-        )
-
-        rotated_box = cv2.transform(np.array([box]), rotation_matrix)[0]
-        min_x = max(0, int(np.min(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_left
-        max_x = min(w_image, int(np.max(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_right
-        min_y = max(0, int(np.min(rotated_box[:, 1])) + detect_lcd_params.expand_crop_top)
-        max_y = min(h_image, int(np.max(rotated_box[:, 1])) + detect_lcd_params.expand_crop_bot)
-        # min_y = max(0, int(np.min(rotated_box[:, 1])))
-        # max_y = min(h_image, int(np.max(rotated_box[:, 1])))
-        
-
-        top_left_point = self.get_top_left_point_box(rotated_box)
-
-        cropped_image = rotated_image[min_y:max_y, min_x:max_x]
-        
-        self.is_detected_LCD = True
-        result : CCDResult = {
-            "original_image": original_img,
-            "binary_image": binary_image, # type: ignore
-            "rotated_image": rotated_image,
-            "cropped_image": cropped_image,
-            "ccd_box_original": box,
-            "top_left_point": top_left_point,
-            "ccd_box_rotated": rotated_box,
-            'rotate_angle': angle,
-            'center': center,
-        } 
-        return result
-
-    def test_detect_ccd(self,video_source : Union[int,str]) -> None:
-        cap = cv2.VideoCapture(video_source)
-        if not cap.isOpened():
-            logger.debug("Cannot open video source.")
-            exit(1)
-        while True:
-            ret, frame = cap.read()
-            if not ret:
-                logger.info("End of video stream.")
-                break
-            
-            result = self.detect_ccd(frame)
-            if result is not None:
-                original_image = result["original_image"]
-                binary_image = result["binary_image"]
-                rotated_image = result["rotated_image"]
-                cropped_image = result["cropped_image"]
-                ccd_box_original = result["ccd_box_original"]
-                ccd_box_rotated = result["ccd_box_rotated"]
-
-                # Draw the CCD box on the rotated image
-                cv2.polylines(original_image, [ccd_box_original.astype(np.int32)], isClosed=True, color=(0, 255, 0), thickness=2) # type: ignore
-                cv2.imshow("CCD Box on Rotated Image", original_image)
-            else:
-                cv2.imshow("CCD Box on Rotated Image", frame)
-            if cv2.waitKey(1) & 0xFF == ord('q'):
-                break
-        cap.release()
-        cv2.destroyAllWindows()
-    ##
-    ##
-    ## check anomaly detection
     def train(self) -> None:
         params = abnormal_train_params
         datamodule = Folder(
@@ -302,31 +104,102 @@ class AnomalyDetection:
                 'heat_map':heat_map,
             }
 
-    def normalize_rgb_heatmap_sum(self, heatmap_rgb:np.ndarray) -> np.ndarray:
-        # Chuyển sang float để tránh tràn số khi cộng
-        heatmap_rgb = heatmap_rgb.astype(np.float32)
+    def detect_ccd(self, img : Union[str,np.ndarray]) -> CCDResult | None:
+        self.is_detected_CCD = False
+        if isinstance(img, str):
+            img = cv2.imread(img)
+        if img is None:
+            logger.warning("Cannot detect LCD: Image is None or not loaded properly.")
+            return None
         
-        # Cộng tổng 3 kênh màu tại mỗi pixel
-        summed = heatmap_rgb.sum(axis=2)  # shape (H, W)
+        original_img = img.copy()
         
-        # Chia cho max tổng có thể có = 255 * 3 để chuẩn hóa về [0,1]
-        normalized = summed / (255.0 * 3)
+        #preprocessing
+        binary_image = self.adaptive_image_to_binary(img)
+        binary_image = self.border_gaps_binary_image(binary_image)
         
-        # Trừ đi giá trị nhỏ nhất để "shift" về 0
-        min_val = normalized.min()
-        normalized_shifted = normalized - min_val
+        #get area of interest
+        h_image, w_image = img.shape[:2]
+        center = (w_image // 2, h_image // 2)
+        total_area = w_image * h_image
         
-        # Nếu min_val == max_val thì kết quả toàn 0, tránh giá trị âm
-        normalized_shifted = np.clip(normalized_shifted, 0, 1)
-        
-        return normalized_shifted  
+        # load area thresholds
+        min_valid_area = total_area * detect_lcd_params.min_LCD_area_ratio
+        max_valid_area = total_area * detect_lcd_params.max_LCD_area_ratio
 
-    def normalize_heatmap_to_binary(self, heat_map:np.ndarray) -> np.ndarray:
+        # find contours
+        contours, _ = cv2.findContours(binary_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE) # type: ignore
+        if not contours:
+            return None
         
-        binary_map = np.zeros_like(heat_map, dtype=np.uint8)
-        binary_map[heat_map >= abnormal_inference_params.heat_map_NG_thresh_hold] = 255
-        return binary_map
+        contours = sorted(contours, key=cv2.contourArea, reverse=True)
+        best_contour = None
+        smallest_area = float('inf')
 
+        for contour in contours:
+            (_, _), (cw, ch), angle = cv2.minAreaRect(contour)
+            if max(cw,ch) >= detect_lcd_params.max_LCD_w_h_ratio * w_image or min(cw,ch) >= detect_lcd_params.max_LCD_w_h_ratio * h_image:
+                continue  # Loại bỏ contour quá lớn so với ảnh
+            area = cv2.contourArea(contour)
+            
+            # Early termination if area too small
+            if area < min_valid_area:
+                break
+            if area > max_valid_area:
+                continue
+            
+            if area < smallest_area:
+                smallest_area = area
+                best_contour = contour
+
+        if best_contour is None:
+            logger.debug("No valid contour found within area thresholds.")
+            return None
+        
+        rect = cv2.minAreaRect(best_contour)
+        (_, _), (cw, ch), angle = rect
+
+        if cw < ch:
+            angle -= 90
+        
+        # Get box coordinates
+        box = np.int32(cv2.boxPoints(rect))
+
+        rotation_matrix = cv2.getRotationMatrix2D(center, angle, 1.0)
+        rotated_image = cv2.warpAffine(
+            img, rotation_matrix,
+            (w_image, h_image),
+            flags=cv2.INTER_CUBIC, 
+            borderMode=cv2.BORDER_REPLICATE
+        )
+
+        rotated_box = cv2.transform(np.array([box]), rotation_matrix)[0]
+        min_x = max(0, int(np.min(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_left
+        max_x = min(w_image, int(np.max(rotated_box[:, 0]))) + detect_lcd_params.expand_crop_right
+        min_y = max(0, int(np.min(rotated_box[:, 1])) + detect_lcd_params.expand_crop_top)
+        max_y = min(h_image, int(np.max(rotated_box[:, 1])) + detect_lcd_params.expand_crop_bot)
+        # min_y = max(0, int(np.min(rotated_box[:, 1])))
+        # max_y = min(h_image, int(np.max(rotated_box[:, 1])))
+        
+
+        top_left_point = self.get_top_left_point_box(rotated_box)
+
+        cropped_image = rotated_image[min_y:max_y, min_x:max_x]
+        
+        self.is_detected_LCD = True
+        result : CCDResult = {
+            "original_image": original_img,
+            "binary_image": binary_image, # type: ignore
+            "rotated_image": rotated_image,
+            "cropped_image": cropped_image,
+            "ccd_box_original": box,
+            "top_left_point": top_left_point,
+            "ccd_box_rotated": rotated_box,
+            'rotate_angle': angle,
+            'center': center,
+        } 
+        return result
+    
     def dust_detect_on_image(self, image: str | np.ndarray) -> None | tuple[np.ndarray,np.ndarray,bool,np.int32]:
         self.is_abnormal = True
         if isinstance(image, str):
@@ -417,7 +290,7 @@ class AnomalyDetection:
 
 
                 # 2. Dilation heatmap để tìm vùng
-                normalize_rgb_sum = self.normalize_rgb_heatmap_sum(original_heat_map)
+                normalize_rgb_sum = self.normalize_rgb_heatmap_by_sum(original_heat_map)
                 max_value_abnormal = np.max(normalize_rgb_sum)  
                 logger.debug(f"Max value in heatmap: {max_value_abnormal}")
                 binary_heatmap = self.normalize_heatmap_to_binary(normalize_rgb_sum)
@@ -509,9 +382,9 @@ class AnomalyDetection:
 
 if __name__ == "__main__":
     # Example usage
-    detector = AnomalyDetection()
-    video_source = camera_config_params.camera_source if camera_config_params.camera_source else 0
-    # detector.test_dust_detect_on_image(video_source)
+    # detector = AnomalyDetection()
+    # video_source = camera_config_params.camera_source if camera_config_params.camera_source else 0
+    print(1)
 
             
 

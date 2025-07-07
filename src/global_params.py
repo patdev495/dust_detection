@@ -34,11 +34,18 @@ class System_Config_Params(BaseParams):
 class Camera_Config_Params(BaseParams):
     def __init__(self,app_name : str,module_name : str):
         super().__init__(app_name, module_name)
+        self.instructions = [
+            'camera reoslution: [1080,1920] - fullHD or [2160,3840] - 4k',
+            'auto_exposure: 0.25 - manual or 0.75 - auto',
+            'prop_exposure: the closer the value is to 0, the brighter it is',
+            "cap_type_dshow: true - live camera or false - video test ",
+            "zoom_in_factor: zoom ratio"
+        ]
         self.camera_source : Union[str,int]  = 0
-        self.camera_resolution : Union[list[int],tuple[int,int]] = [2160,3840]
+        self.camera_resolution : Union[list[int],tuple[int,int]] = [1080,1920]
         self.enable_mjpg_format : bool = False
         
-        self.is_need_resize_frame : bool = True
+        self.is_need_resize_frame : bool = False
         self.resize_resolution : Union[list[int],tuple[int,int]] = [1620,2880]
         self.auto_exposure : float = 0.25 #=.75
         self.prop_exposure : int = -5
@@ -48,11 +55,11 @@ class Camera_Config_Params(BaseParams):
         self.rotate_angle : float = 180
 
         self.manual_setting : bool = True
-        self.brightness : int = 45
+        self.brightness : int = 65
         self.contrast : int = 60
-        self.saturation : int = 0
-        self.sharpness : int = 70
-        self.gain : int = 30
+        self.saturation : int = 40
+        self.sharpness : int = 90
+        self.gain : int = 0
         self.cap_type_dshow : bool = True
         # self.auto_focus = 0
         self.zoom_in_factor : float = 1.05
@@ -96,7 +103,7 @@ class Detect_LCD_Params(BaseParams):
         self.is_need_scan_sn_first : bool = True
 
         self.motion_score_threshold : int = 3
-        self.required_stable_frames = 3
+        self.required_stable_frames = 4
         self.resize_shape_caculate_stablity : list[int] = [80,60]
 
         
@@ -124,13 +131,13 @@ class Abnormal_Inference_Params(BaseParams):
         self.model_path : str = r"models\openvino_512_20.05_My_Crop\model.xml"
         self.inference_type : str = 'Openvino' 
         self.heat_map_NG_thresh_hold : float = 0.14 # < 1
-        self.heat_map_display_alpha : float = 0.5 # < 1
+        self.heat_map_display_alpha : float = 0.7 # < 1
         self.max_ratio_w_h_cnt : float = 3
         self.brightness_threshold_caculate_dust_size : float = 0.9 # < 1
         self.ng_color : list[int] = [0,0,255]
         self.ok_color : list[int] = [0,255,0]
         self.dust_color : list[int] = [255,0,0]
-        self.frame_count_threashold_ok : int = 6
+        self.frame_count_threashold_ok : int = 8
         self.is_need_show_abnormal_score : bool = True
 
         self.src_video : int | str = r"D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4"
