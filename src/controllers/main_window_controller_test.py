@@ -47,11 +47,11 @@ from src.global_params import (
     system_config_params,
 )
 
-
-from src.views.main_window import Ui_MainWindow
+from src.views.main_window_test import Ui_MainWindow
 from src.modules.Loggers import console_logger, operation_history_log
 
 from PySide6.QtCore import QObject, QEvent
+
 
 class ResizeFilter(QObject):
     def __init__(self, label):
@@ -63,8 +63,6 @@ class ResizeFilter(QObject):
             size = self.label.size()
             print(f"Kích thước QLabel: {size.width()} x {size.height()}")
         return super().eventFilter(obj, event)
-
-
 
 class StreamVideoWorker(QObject):
     emit_frame_signal = Signal(object)
@@ -78,7 +76,7 @@ class StreamVideoWorker(QObject):
         self.cap: cv2.VideoCapture | None = None
         self.is_running: bool = False
         self.abnormal_processing: AnomalyDetection | None = None
-        
+
         self.init_video_capture()
         # camera
 
@@ -365,7 +363,7 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.create_sfc_req_res_thread()
         self.init_thread_stream_video()
         operation_history_log.info("Open application\n")
-        
+                
         self.filter = ResizeFilter(self.ui_label_display_video)
         self.ui_label_display_video.installEventFilter(self.filter)
 
@@ -510,10 +508,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         self.ui_mac_input.textChanged.connect(self.handle_mac_input_changed)
 
         # open config button
-        self.ui_open_config_file_btn.clicked.connect(
-            lambda: open_file(system_config_params.config_file_path)
-        )
-
         # set focus to mac input
         self.focus_timer = QTimer(self)
         self.focus_timer.setInterval(system_config_params.time_to_focus_mac_input)
@@ -532,21 +526,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         This method is typically used to provide visual feedback to the user about the current
         process type selection in the UI."""
         
-        style = """
-            background-color: #a9dfbf;
-            color: black;
-            border: 2px solid #27ae60;
-            border-radius: 8px;
-            padding: 3px 16px;
-            """
-
-        if self.image_need_process == "":
-            self.ui_proces_type_camera_label.setStyleSheet(style)
-            self.ui_process_type_image_label.setStyleSheet("")
-        else:
-            self.ui_process_type_image_label.setStyleSheet(style)
-            self.ui_proces_type_camera_label.setStyleSheet("")
-
     def init_style_sheet(self) -> None:
         """
         Initializes and applies the style sheet and UI resources for the main window.
@@ -561,24 +540,9 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
         """
         
         self.update_process_type_mode()
-        self.ui_open_config_file_btn.setStyleSheet("""
-                                                   
-            QPushButton {background-color: #F0E68C;
-            font-weight: bold;
-            border-radius: 3px;
-            border: 1px solid #ccc;
-            }
-
-            QPushButton:hover {
-                background-color: #ff9800;  /* đậm hơn khi hover */
-            }
-        """)
 
         # self.set_background_label(self.ui_label_display_video,get_resource_path(r"src\assets\IVIS.png"))
-        self.set_background_label(
-            self.ui_logo_info_label, get_resource_path(r"src\assets\IVIS.png")
-        )
-
+        
         QTimer.singleShot(
             0,
             lambda: self.ui_label_display_video.setImage(
@@ -657,7 +621,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             self.stream_video_thread.started.connect(
                 self.stream_video_worker.start_stream_video
             )
-            
             self.stream_video_worker.emit_frame_signal.connect(
                 self.update_stream_camera
             )
@@ -1155,7 +1118,6 @@ class MainWindowController(QMainWindow, Ui_MainWindow):
             operation_history_log.error("Image is none, cannot save")
             return
         now = datetime.now()
-        self.ui_last_mac_input.setText(self.input_mac_value)
         timestamp_str = now.strftime("%d/%m/%Y %H:%M:%S")  # Dùng để vẽ lên ảnh
         folder_name = now.strftime("%d-%m-%Y")  # Dùng để tạo thư mục
         time_str = now.strftime("%H_%M_%S")  # Dùng cho tên file

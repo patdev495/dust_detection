@@ -62,13 +62,13 @@ Camera_Config:
   - 'zoom_in_factor: zoom ratio'
   camera_source: D:\Tu\Old\AI\data\Data_check_bui\DATA_16.01\OK\1 hat bui to.mp4
   camera_resolution:
-  - 2160
-  - 3840
+  - 1080
+  - 1920
   enable_mjpg_format: false
   is_need_resize_frame: true
   resize_resolution:
-  - 1382
-  - 2400
+  - 1620
+  - 2880
   auto_exposure: 0.25
   prop_exposure: -6
   sensor_size:

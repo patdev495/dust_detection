@@ -1,5 +1,5 @@
 from PySide6.QtWidgets import QApplication
-from src.controllers.main_window_controller import MainWindowController
+from controllers.main_window_controller_test import MainWindowController
 # from src.modules.AnomalyDetection import AnomalyDetection
 # from src.global_params import system_config_params,camera_config_params
 # import logging
@@ -19,7 +19,6 @@ if __name__ == '__main__':
     
     # abnomal_processing = Abnormal_Processing()
     # abnomal_processing.train()
-
 
 
     
